@@ -298,10 +298,19 @@ func validateRestorePath(path string) error {
 		return fmt.Errorf("invalid restore path: must be absolute")
 	}
 
-	// Check for path traversal
+	// Verify path doesn't escape root using relative calculation
 	cleanPath := filepath.Clean(path)
-	if strings.Contains(cleanPath, "..") {
+	rel, err := filepath.Rel("/", cleanPath)
+	if err != nil {
+		return fmt.Errorf("invalid path: %w", err)
+	}
+	if strings.HasPrefix(rel, "../") || rel == ".." {
 		return fmt.Errorf("invalid restore path: path traversal detected")
+	}
+
+	// Also check for double-slash which could be used in attacks
+	if strings.Contains(path, "//") {
+		return fmt.Errorf("invalid restore path: suspicious path format")
 	}
 
 	// Block system paths
