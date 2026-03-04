@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -110,13 +111,15 @@ func (m *Manager) movePath(src, dst string) error {
 	}
 
 	// If cross-device, fall back to copy + delete
-	if strings.Contains(err.Error(), "invalid cross-device link") {
+	if isCrossDeviceError(err) {
 		return m.copyAndDelete(src, dst)
 	}
 
 	return err
+return err
 }
 
+// copyAndDelete handles cross-device moves
 // copyAndDelete handles cross-device moves
 func (m *Manager) copyAndDelete(src, dst string) error {
 	info, err := os.Lstat(src)
@@ -539,5 +542,19 @@ func validateFileName(name string) error {
 		return fmt.Errorf("filename contains null byte")
 	}
 
-	return nil
+return nil
+}
+
+// isCrossDeviceError checks if the error is a cross-device link error
+// isCrossDeviceError checks if the error is a cross-device link error
+func isCrossDeviceError(err error) bool {
+	if err == nil {
+		return false
+	}
+	// Use syscall.EXDEV for portable cross-device detection
+	if linkErr, ok := err.(*os.LinkError); ok {
+		return linkErr.Err == syscall.EXDEV
+	}
+	// Fallback for non-LinkError cases (shouldn't happen with os.Rename)
+	return false
 }
