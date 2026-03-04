@@ -1,16 +1,15 @@
 package cmd
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/amakeenk/trs/internal/trash"
+	"github.com/amakeenk/trs/internal/tui"
 	"github.com/amakeenk/trs/internal/ui"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 )
 
@@ -108,19 +107,68 @@ func restoreInteractive(mgr *trash.Manager) {
 		return
 	}
 
-	// Display list
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, ui.BoldText("INDEX\tNAME\tORIGINAL"))
-	for i, item := range items {
-		fmt.Fprintf(w, "%d\t%s\t%s\n", i+1, item.Name, item.OriginalPath)
+	// Check if stdout is a terminal
+	if !ui.IsTerminal() {
+		// Fallback to simple list for non-TTY
+		restoreInteractiveSimple(mgr, items)
+		return
 	}
-	w.Flush()
 
-	// Prompt
-	fmt.Print("\nRestore which? [1-", len(items), "] or name (Enter to cancel): ")
+	// Launch TUI
+	model := tui.NewRestoreModel(items, flagOverwrite)
+	p := tea.NewProgram(model)
+	finalModel, err := p.Run()
+	if err != nil {
+		exitWithError(fmt.Sprintf("TUI error: %v", err), 1)
+	}
 
-	reader := bufio.NewReader(os.Stdin)
-	input, _ := reader.ReadString('\n')
+	result := finalModel.(tui.RestoreModel)
+
+	if result.Cancelled() {
+		fmt.Println("Cancelled")
+		return
+	}
+
+	if !result.Confirmed() {
+		fmt.Println("Cancelled")
+		return
+	}
+
+	selected := result.SelectedItem()
+	if selected == nil {
+		fmt.Println("No file selected")
+		return
+	}
+
+	err = mgr.Restore(selected.Name, result.Force())
+	if flagJSON {
+		restoreResult := RestoreResult{
+			Name:     selected.Name,
+			Original: selected.OriginalPath,
+		}
+		if err != nil {
+			restoreResult.Error = err.Error()
+		}
+		output, _ := json.Marshal(restoreResult)
+		fmt.Println(string(output))
+	} else if err != nil {
+		exitWithError(fmt.Sprintf("\x1b[31mError: %v\x1b[0m", err), 1)
+	} else {
+		fmt.Printf("\x1b[32mRestored: %s → %s\x1b[0m\n", selected.Name, selected.OriginalPath)
+	}
+}
+
+// restoreInteractiveSimple is a fallback for non-TTY environments
+func restoreInteractiveSimple(mgr *trash.Manager, items []trash.TrashItem) {
+	// Simple numbered list
+	for i, item := range items {
+		fmt.Printf("%d) %s\n", i+1, item.Name)
+	}
+
+	fmt.Print("\nRestore which? [1-", len(items), "]: ")
+
+	var input string
+	fmt.Scanln(&input)
 	input = strings.TrimSpace(input)
 
 	if input == "" {
