@@ -57,17 +57,31 @@ func parseTrashInfoReader(r io.Reader) (*TrashInfo, error) {
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
 
-		switch key {
+switch key {
 		case "Path":
 			// URL decode the path
 			decoded, err := url.QueryUnescape(value)
 			if err != nil {
-				// If decoding fails, use as-is
-				info.Path = value
-			} else {
-				info.Path = decoded
+				return nil, fmt.Errorf("invalid path encoding: %w", err)
 			}
-		case "DeletionDate":
+
+			// Validate the path
+			if !filepath.IsAbs(decoded) {
+				return nil, fmt.Errorf("trashinfo path must be absolute: %s", decoded)
+			}
+
+			// Check for suspicious patterns
+			if strings.Contains(decoded, "\x00") {
+				return nil, fmt.Errorf("trashinfo path contains null byte")
+			}
+
+			// Limit path length
+			if len(decoded) > 4096 {
+				return nil, fmt.Errorf("trashinfo path too long")
+			}
+
+			info.Path = decoded
+case "DeletionDate":
 			t, err := time.Parse(TimeFormat, value)
 			if err != nil {
 				return nil, fmt.Errorf("parse deletion date: %w", err)
