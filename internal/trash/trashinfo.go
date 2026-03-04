@@ -22,18 +22,34 @@ const TimeFormat = "2006-01-02T15:04:05"
 
 // ParseTrashInfo reads and parses a .trashinfo file
 func ParseTrashInfo(path string) (*TrashInfo, error) {
+	// Limit file size to prevent DoS
+	const maxTrashInfoSize = 8192 // 8KB is more than enough for valid trashinfo
+
+	stat, err := os.Stat(path)
+	if err != nil {
+		return nil, fmt.Errorf("stat trashinfo %s: %w", path, err)
+	}
+	if stat.Size() > maxTrashInfoSize {
+		return nil, fmt.Errorf("trashinfo file too large: %d bytes (max %d)", stat.Size(), maxTrashInfoSize)
+	}
+
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("open trashinfo %s: %w", path, err)
 	}
 	defer f.Close()
 
-	return parseTrashInfoReader(f)
+	// Use io.LimitReader as extra safety
+	return parseTrashInfoReader(io.LimitReader(f, maxTrashInfoSize))
 }
 
 func parseTrashInfoReader(r io.Reader) (*TrashInfo, error) {
 	info := &TrashInfo{}
 	scanner := bufio.NewScanner(r)
+
+	// Limit line length to prevent memory exhaustion
+	const maxLineLen = 8192
+	scanner.Buffer(make([]byte, maxLineLen), maxLineLen)
 
 	// Skip [Trash Info] header
 	if !scanner.Scan() {
