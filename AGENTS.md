@@ -44,7 +44,7 @@ trs/
 │   ├── root.go         # Root command, global flags
 │   ├── trash.go        # trs <files...>
 │   ├── list.go         # trs list
-│   ├── restore.go      # trs restore [--last]
+│   ├── restore.go      # trs restore [--last] (with TUI)
 │   ├── empty.go        # trs empty [--days N]
 │   ├── status.go       # trs status [-v]
 │   └── version.go      # trs version
@@ -53,6 +53,8 @@ trs/
 │   │   ├── manager.go     # TrashManager, all operations
 │   │   ├── trashinfo.go   # .trashinfo file handling
 │   │   └── volume.go      # Volume/mount detection
+│   ├── tui/             # Terminal UI components
+│   │   └── restore.go      # Interactive restore with fuzzy search
 │   ├── ui/             # Output formatting
 │   │   └── output.go      # Colors, size formatting
 │   └── version/        # Version info (ldflags)
@@ -237,6 +239,43 @@ ui.BoldText("HEADER")  // Bold text
 // Respect NO_COLOR env var automatically
 ```
 
+## TUI Patterns (internal/tui/)
+
+For interactive commands, use bubbletea:
+
+```go
+import (
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/lipgloss"
+)
+
+// Model struct
+type MyModel struct {
+	items     []Item
+	selected  int
+	search    textinput.Model
+	// ...
+}
+
+// Implement tea.Model interface
+func (m MyModel) Init() tea.Cmd { return nil }
+func (m MyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { ... }
+func (m MyModel) View() string { ... }
+
+// Launch TUI
+model := NewMyModel(items)
+p := tea.NewProgram(model)
+finalModel, _ := p.Run()
+result := finalModel.(MyModel)
+```
+
+Key patterns:
+- Check `ui.IsTerminal()` before launching TUI
+- Provide fallback for non-TTY environments
+- Use `lipgloss` for styling, not raw ANSI codes
+- Handle `tea.KeyCtrlC` and `tea.KeyEsc` for cancellation
+
 ## Key Architecture Decisions
 
 1. **No external utilities** - XDG Trash spec implemented in pure Go
@@ -248,7 +287,13 @@ ui.BoldText("HEADER")  // Bold text
 
 ## Dependencies
 
+Core:
 - `github.com/spf13/cobra` - CLI framework
 - `github.com/stretchr/testify` - Testing assertions
+
+TUI:
+- `github.com/charmbracelet/bubbletea` - TUI framework
+- `github.com/charmbracelet/bubbles` - TUI components (textinput)
+- `github.com/charmbracelet/lipgloss` - Styling
 
 No other dependencies allowed without strong justification.
