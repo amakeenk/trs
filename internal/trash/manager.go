@@ -343,7 +343,7 @@ func (m *Manager) RestoreFromDir(trashDir, trashName string, overwrite bool) err
 		return fmt.Errorf("file not in trash: %s", trashName)
 	}
 
-	// Use Lstat to avoid symlink following attacks
+// Use Lstat to avoid symlink following attacks
 	if fi, err := os.Lstat(ti.Path); err == nil {
 		if !overwrite {
 			return fmt.Errorf("destination exists: %s (use --force to overwrite)", ti.Path)
@@ -352,13 +352,11 @@ func (m *Manager) RestoreFromDir(trashDir, trashName string, overwrite bool) err
 		if fi.Mode()&os.ModeSymlink != 0 {
 			return fmt.Errorf("refusing to overwrite symlink: %s", ti.Path)
 		}
-		// Remove existing destination
-		if err := os.RemoveAll(ti.Path); err != nil {
+		// Remove existing destination using safe removal
+		if err := safeRemoveAll(ti.Path); err != nil {
 			return fmt.Errorf("remove existing: %w", err)
 		}
 	}
-
-	// Ensure destination directory exists
 	destDir := filepath.Dir(ti.Path)
 	if err := os.MkdirAll(destDir, 0755); err != nil {
 		return fmt.Errorf("create destination directory: %w", err)
@@ -544,9 +542,42 @@ func validateFileName(name string) error {
 		return fmt.Errorf("filename contains null byte")
 	}
 
-	return nil
+return nil
 }
 
+// safeRemoveAll removes a path without following symlinks in subdirectories
+func safeRemoveAll(path string) error {
+	// Check if path itself is a symlink
+	info, err := os.Lstat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // Already gone
+		}
+		return err
+	}
+
+	// If it's a file or symlink, just remove it
+	if !info.IsDir() {
+		return os.Remove(path)
+	}
+
+	// For directories, walk and check for symlinks before removing
+	err = filepath.Walk(path, func(subPath string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		// Check for symlinks inside directory
+		if subPath != path && info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("refusing to remove directory containing symlink: %s", subPath)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return os.RemoveAll(path)
+}
 // isCrossDeviceError checks if the error is a cross-device link error
 func isCrossDeviceError(err error) bool {
 	if err == nil {
