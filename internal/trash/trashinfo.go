@@ -90,7 +90,7 @@ func (ti *TrashInfo) Write(path string) error {
 	buf.WriteString(fmt.Sprintf("Path=%s\n", url.QueryEscape(ti.Path)))
 	buf.WriteString(fmt.Sprintf("DeletionDate=%s\n", ti.DeletionDate.Format(TimeFormat)))
 
-	return os.WriteFile(path, []byte(buf.String()), 0644)
+	return os.WriteFile(path, []byte(buf.String()), 0600)
 }
 
 // TrashInfoPath returns the path to the .trashinfo file for a given trash name
