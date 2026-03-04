@@ -295,14 +295,19 @@ func (m *Manager) RestoreFromDir(trashDir, trashName string, overwrite bool) err
 	}
 
 	srcPath := FilesPath(trashDir, trashName)
-	if _, err := os.Stat(srcPath); err != nil {
+	// Use Lstat to avoid following symlinks
+	if _, err := os.Lstat(srcPath); err != nil {
 		return fmt.Errorf("file not in trash: %s", trashName)
 	}
 
-
-	if _, err := os.Stat(ti.Path); err == nil {
+	// Use Lstat to avoid symlink following attacks
+	if fi, err := os.Lstat(ti.Path); err == nil {
 		if !overwrite {
 			return fmt.Errorf("destination exists: %s (use --force to overwrite)", ti.Path)
+		}
+		// Security: refuse to remove symlinks to prevent attacks
+		if fi.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("refusing to overwrite symlink: %s", ti.Path)
 		}
 		// Remove existing destination
 		if err := os.RemoveAll(ti.Path); err != nil {
