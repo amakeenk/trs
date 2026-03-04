@@ -41,13 +41,19 @@ func (m *Manager) Move(path string) error {
 		return fmt.Errorf("get absolute path: %w", err)
 	}
 
-	// Check if path exists (use Lstat for symlinks)
+// Check if path exists (use Lstat for symlinks)
 	_, err = os.Lstat(absPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("file not found: %s", absPath)
 		}
 		return fmt.Errorf("stat %s: %w", absPath, err)
+	}
+
+	// Validate filename to prevent path traversal
+	baseName := filepath.Base(absPath)
+	if err := validateFileName(baseName); err != nil {
+		return fmt.Errorf("invalid filename: %w", err)
 	}
 
 	// Get appropriate trash directory
@@ -65,7 +71,7 @@ func (m *Manager) Move(path string) error {
 	// Retry loop to handle TOCTOU race conditions
 	maxAttempts := 1000
 	for attempt := 0; attempt < maxAttempts; attempt++ {
-		trashName, err := m.resolveNameConflict(trashDir, filepath.Base(absPath))
+		trashName, err := m.resolveNameConflict(trashDir, baseName)
 		if err != nil {
 			return fmt.Errorf("resolve name conflict: %w", err)
 		}
@@ -507,5 +513,31 @@ func (m *Manager) GetOldestAndNewest() (oldest, newest time.Time, err error) {
 	newest = items[0].DeletionDate
 	oldest = items[len(items)-1].DeletionDate
 
-	return oldest, newest, nil
+return oldest, newest, nil
+}
+
+// validateFileName checks for path traversal attempts in filenames
+// validateFileName checks for path traversal attempts in filenames
+func validateFileName(name string) error {
+	// Block empty names
+	if name == "" || name == "." || name == ".." {
+		return fmt.Errorf("invalid filename: %q", name)
+	}
+
+	// Block path separators
+	if strings.ContainsAny(name, "/\\") {
+		return fmt.Errorf("filename contains path separator: %q", name)
+	}
+
+	// Block parent directory references
+	if strings.Contains(name, "..") {
+		return fmt.Errorf("filename contains path traversal: %q", name)
+	}
+
+	// Block null bytes
+	if strings.ContainsRune(name, '\x00') {
+		return fmt.Errorf("filename contains null byte")
+	}
+
+	return nil
 }
