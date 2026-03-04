@@ -344,3 +344,242 @@ func TestResolveNameConflict(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "file.txt_2", name)
 }
+
+func TestManager_FindByName(t *testing.T) {
+	tmpHome := t.TempDir()
+	xdgData := filepath.Join(tmpHome, ".local", "share")
+	t.Setenv("XDG_DATA_HOME", xdgData)
+	t.Setenv("HOME", tmpHome)
+
+	mgr, err := NewManager()
+	require.NoError(t, err)
+
+	// Empty trash
+	matches, err := mgr.FindByName("file")
+	require.NoError(t, err)
+	assert.Empty(t, matches)
+
+	// Add files
+	tmpDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "file1.txt"), []byte("1"), 0644))
+	require.NoError(t, mgr.Move(filepath.Join(tmpDir, "file1.txt")))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "file2.txt"), []byte("2"), 0644))
+	require.NoError(t, mgr.Move(filepath.Join(tmpDir, "file2.txt")))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "other.txt"), []byte("3"), 0644))
+	require.NoError(t, mgr.Move(filepath.Join(tmpDir, "other.txt")))
+
+	// Exact match
+	matches, err = mgr.FindByName("file1.txt")
+	require.NoError(t, err)
+	require.Len(t, matches, 1)
+	assert.Equal(t, "file1.txt", matches[0].Name)
+
+	// Partial match
+	matches, err = mgr.FindByName("file")
+	require.NoError(t, err)
+	require.Len(t, matches, 2)
+
+	// No match
+	matches, err = mgr.FindByName("nonexistent")
+	require.NoError(t, err)
+	assert.Empty(t, matches)
+}
+
+func TestManager_GetLargest(t *testing.T) {
+	tmpHome := t.TempDir()
+	xdgData := filepath.Join(tmpHome, ".local", "share")
+	t.Setenv("XDG_DATA_HOME", xdgData)
+	t.Setenv("HOME", tmpHome)
+
+	mgr, err := NewManager()
+	require.NoError(t, err)
+
+	// Empty trash
+	largest, err := mgr.GetLargest(3)
+	require.NoError(t, err)
+	assert.Empty(t, largest)
+
+	// Add files with different sizes
+	tmpDir := t.TempDir()
+	small := filepath.Join(tmpDir, "small.txt")
+	require.NoError(t, os.WriteFile(small, []byte("x"), 0644))
+	require.NoError(t, mgr.Move(small))
+
+	medium := filepath.Join(tmpDir, "medium.txt")
+	require.NoError(t, os.WriteFile(medium, []byte("xxxxx"), 0644))
+	require.NoError(t, mgr.Move(medium))
+
+	big := filepath.Join(tmpDir, "big.txt")
+	require.NoError(t, os.WriteFile(big, []byte("xxxxxxxxxxx"), 0644))
+	require.NoError(t, mgr.Move(big))
+
+	// Get top 2
+	largest, err = mgr.GetLargest(2)
+	require.NoError(t, err)
+	require.Len(t, largest, 2)
+	assert.Equal(t, "big.txt", largest[0].Name)
+	assert.Equal(t, "medium.txt", largest[1].Name)
+
+	// Get more than available
+	largest, err = mgr.GetLargest(10)
+	require.NoError(t, err)
+	require.Len(t, largest, 3)
+}
+
+func TestManager_GetOldestAndNewest(t *testing.T) {
+	tmpHome := t.TempDir()
+	xdgData := filepath.Join(tmpHome, ".local", "share")
+	t.Setenv("XDG_DATA_HOME", xdgData)
+	t.Setenv("HOME", tmpHome)
+
+	mgr, err := NewManager()
+	require.NoError(t, err)
+
+	// Empty trash
+	oldest, newest, err := mgr.GetOldestAndNewest()
+	require.NoError(t, err)
+	assert.True(t, oldest.IsZero())
+	assert.True(t, newest.IsZero())
+
+	// Add files
+	tmpDir := t.TempDir()
+	file1 := filepath.Join(tmpDir, "first.txt")
+	require.NoError(t, os.WriteFile(file1, []byte("1"), 0644))
+	require.NoError(t, mgr.Move(file1))
+
+	time.Sleep(time.Second)
+
+	file2 := filepath.Join(tmpDir, "second.txt")
+	require.NoError(t, os.WriteFile(file2, []byte("2"), 0644))
+	require.NoError(t, mgr.Move(file2))
+
+	oldest, newest, err = mgr.GetOldestAndNewest()
+	require.NoError(t, err)
+	assert.False(t, oldest.IsZero())
+	assert.False(t, newest.IsZero())
+	assert.True(t, newest.After(oldest))
+}
+
+func TestDirSize(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Empty directory
+	size, err := dirSize(tmpDir)
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), size)
+
+	// Add files
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "file1.txt"), []byte("hello"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "file2.txt"), []byte("world"), 0644))
+
+	size, err = dirSize(tmpDir)
+	require.NoError(t, err)
+	assert.Equal(t, int64(10), size) // "hello" + "world" = 10 bytes
+
+	// Add nested directory
+	subDir := filepath.Join(tmpDir, "sub")
+	require.NoError(t, os.Mkdir(subDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(subDir, "nested.txt"), []byte("nested"), 0644))
+
+	size, err = dirSize(tmpDir)
+	require.NoError(t, err)
+	assert.Equal(t, int64(16), size) // 10 + "nested" = 16 bytes
+}
+
+func TestCopyFile(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	src := filepath.Join(tmpDir, "source.txt")
+	require.NoError(t, os.WriteFile(src, []byte("hello world"), 0644))
+
+	dst := filepath.Join(tmpDir, "dest.txt")
+
+	err := copyFile(src, dst)
+	require.NoError(t, err)
+
+	// Verify content
+	content, err := os.ReadFile(dst)
+	require.NoError(t, err)
+	assert.Equal(t, "hello world", string(content))
+}
+
+func TestCopyAndDelete(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	src := filepath.Join(tmpDir, "source.txt")
+	require.NoError(t, os.WriteFile(src, []byte("test content"), 0644))
+
+	dst := filepath.Join(tmpDir, "dest.txt")
+
+	mgr, err := NewManager()
+	require.NoError(t, err)
+
+	err = mgr.copyAndDelete(src, dst)
+	require.NoError(t, err)
+
+	// Verify source is gone
+	_, err = os.Stat(src)
+	assert.True(t, os.IsNotExist(err))
+
+	// Verify content at destination
+	content, err := os.ReadFile(dst)
+	require.NoError(t, err)
+	assert.Equal(t, "test content", string(content))
+}
+
+func TestCopyDirAndDelete(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	srcDir := filepath.Join(tmpDir, "sourcedir")
+	require.NoError(t, os.MkdirAll(filepath.Join(srcDir, "sub"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "file1.txt"), []byte("content1"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "sub", "file2.txt"), []byte("content2"), 0644))
+
+	// Create symlink
+	require.NoError(t, os.Symlink(filepath.Join(srcDir, "file1.txt"), filepath.Join(srcDir, "link.txt")))
+
+	dstDir := filepath.Join(tmpDir, "destdir")
+
+	mgr, err := NewManager()
+	require.NoError(t, err)
+
+	err = mgr.copyDirAndDelete(srcDir, dstDir)
+	require.NoError(t, err)
+
+	// Verify source is gone
+	_, err = os.Stat(srcDir)
+	assert.True(t, os.IsNotExist(err))
+
+	// Verify content at destination
+	assert.FileExists(t, filepath.Join(dstDir, "file1.txt"))
+	assert.FileExists(t, filepath.Join(dstDir, "sub", "file2.txt"))
+
+	// Verify symlink preserved
+	linkInfo, err := os.Lstat(filepath.Join(dstDir, "link.txt"))
+	require.NoError(t, err)
+	assert.True(t, linkInfo.Mode()&os.ModeSymlink != 0)
+}
+
+func TestManager_StatusWithDirectory(t *testing.T) {
+	tmpHome := t.TempDir()
+	xdgData := filepath.Join(tmpHome, ".local", "share")
+	t.Setenv("XDG_DATA_HOME", xdgData)
+	t.Setenv("HOME", tmpHome)
+
+	mgr, err := NewManager()
+	require.NoError(t, err)
+
+	// Add a directory with files
+	tmpDir := t.TempDir()
+	testDir := filepath.Join(tmpDir, "testdir")
+	require.NoError(t, os.MkdirAll(testDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(testDir, "file1.txt"), []byte("hello"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(testDir, "file2.txt"), []byte("world"), 0644))
+	require.NoError(t, mgr.Move(testDir))
+
+	// Status should include directory size
+	count, size, err := mgr.Status()
+	require.NoError(t, err)
+	assert.Equal(t, 1, count)
+	assert.Equal(t, int64(10), size) // "hello" + "world" = 10 bytes
+}
