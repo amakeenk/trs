@@ -226,6 +226,7 @@ func copyFile(src, dst string) (err error) {
 func (m *Manager) resolveNameConflict(trashDir, name string) (string, error) {
 	trashName := name
 	counter := 0
+	maxIterations := 10000 // Prevent DoS via infinite loop
 
 	for {
 		filesPath := FilesPath(trashDir, trashName)
@@ -239,6 +240,9 @@ func (m *Manager) resolveNameConflict(trashDir, name string) (string, error) {
 		}
 
 		counter++
+		if counter > maxIterations {
+			return "", fmt.Errorf("too many name conflicts (possible DoS attack)")
+		}
 		trashName = fmt.Sprintf("%s_%d", name, counter)
 	}
 }
