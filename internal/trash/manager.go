@@ -124,6 +124,8 @@ func (m *Manager) copyAndDelete(src, dst string) error {
 
 	// Copy file
 	if err := copyFile(src, dst); err != nil {
+		// Cleanup partial file on error
+		os.Remove(dst)
 		return err
 	}
 
@@ -164,6 +166,8 @@ func (m *Manager) copyDirAndDelete(src, dst string) error {
 	})
 
 	if err != nil {
+		// Cleanup partial directory on error
+		os.RemoveAll(dst)
 		return err
 	}
 
@@ -171,22 +175,39 @@ func (m *Manager) copyDirAndDelete(src, dst string) error {
 	return os.RemoveAll(src)
 }
 
-// copyFile copies a single file
-func copyFile(src, dst string) error {
+// copyFile copies a single file preserving permissions
+func copyFile(src, dst string) (err error) {
+	// Get source file info for permissions
+	info, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
 	srcFile, err := os.Open(src)
 	if err != nil {
 		return err
 	}
 	defer srcFile.Close()
 
-	dstFile, err := os.Create(dst)
+	dstFile, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, info.Mode())
 	if err != nil {
 		return err
 	}
-	defer dstFile.Close()
+
+	// Cleanup partial file on error
+	defer func() {
+		if err != nil {
+			os.Remove(dst)
+		}
+	}()
 
 	_, err = io.Copy(dstFile, srcFile)
-	return err
+	if err != nil {
+		dstFile.Close()
+		return err
+	}
+
+	return dstFile.Close()
 }
 
 // resolveNameConflict adds suffix _1, _2, etc. if name already exists in trash
