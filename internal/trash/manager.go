@@ -56,33 +56,43 @@ func (m *Manager) Move(path string) error {
 		return fmt.Errorf("get trash directory: %w", err)
 	}
 
-	// Resolve name conflicts
-	trashName, err := m.resolveNameConflict(trashDir, filepath.Base(absPath))
-	if err != nil {
-		return fmt.Errorf("resolve name conflict: %w", err)
-	}
-
 	// Create trashinfo
 	ti := &TrashInfo{
 		Path:         absPath,
 		DeletionDate: time.Now(),
 	}
 
-	// Write trashinfo first
-	infoPath := TrashInfoPath(trashDir, trashName)
-	if err := ti.Write(infoPath); err != nil {
-		return fmt.Errorf("write trashinfo: %w", err)
+	// Retry loop to handle TOCTOU race conditions
+	maxAttempts := 1000
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		trashName, err := m.resolveNameConflict(trashDir, filepath.Base(absPath))
+		if err != nil {
+			return fmt.Errorf("resolve name conflict: %w", err)
+		}
+
+		infoPath := TrashInfoPath(trashDir, trashName)
+		destPath := FilesPath(trashDir, trashName)
+
+		// Atomically create trashinfo with exclusive flag
+		if err := ti.WriteExclusive(infoPath); err != nil {
+			if os.IsExist(err) {
+				// Race condition: another process created it, retry with new name
+				continue
+			}
+			return fmt.Errorf("write trashinfo: %w", err)
+		}
+
+		// Move the file/directory
+		if err := m.movePath(absPath, destPath); err != nil {
+			// Clean up trashinfo on failure
+			os.Remove(infoPath)
+			return fmt.Errorf("move to trash: %w", err)
+		}
+
+		return nil
 	}
 
-	// Move the file/directory
-	destPath := FilesPath(trashDir, trashName)
-	if err := m.movePath(absPath, destPath); err != nil {
-		// Clean up trashinfo on failure
-		os.Remove(infoPath)
-		return fmt.Errorf("move to trash: %w", err)
-	}
-
-	return nil
+	return fmt.Errorf("max attempts (%d) exceeded", maxAttempts)
 }
 
 // movePath handles moving a file/directory, including cross-device moves

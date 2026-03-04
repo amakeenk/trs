@@ -90,7 +90,25 @@ func (ti *TrashInfo) Write(path string) error {
 	buf.WriteString(fmt.Sprintf("Path=%s\n", url.QueryEscape(ti.Path)))
 	buf.WriteString(fmt.Sprintf("DeletionDate=%s\n", ti.DeletionDate.Format(TimeFormat)))
 
-	return os.WriteFile(path, []byte(buf.String()), 0600)
+return os.WriteFile(path, []byte(buf.String()), 0600)
+}
+
+// WriteExclusive writes the TrashInfo to a .trashinfo file atomically using O_EXCL
+// Returns os.ErrExist if the file already exists
+func (ti *TrashInfo) WriteExclusive(path string) error {
+	var buf strings.Builder
+	buf.WriteString("[Trash Info]\n")
+	buf.WriteString(fmt.Sprintf("Path=%s\n", url.QueryEscape(ti.Path)))
+	buf.WriteString(fmt.Sprintf("DeletionDate=%s\n", ti.DeletionDate.Format(TimeFormat)))
+
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = f.WriteString(buf.String())
+	return err
 }
 
 // TrashInfoPath returns the path to the .trashinfo file for a given trash name
