@@ -116,10 +116,8 @@ func (m *Manager) movePath(src, dst string) error {
 	}
 
 	return err
-return err
 }
 
-// copyAndDelete handles cross-device moves
 // copyAndDelete handles cross-device moves
 func (m *Manager) copyAndDelete(src, dst string) error {
 	info, err := os.Lstat(src)
@@ -186,10 +184,15 @@ func (m *Manager) copyDirAndDelete(src, dst string) error {
 
 // copyFile copies a single file preserving permissions
 func copyFile(src, dst string) (err error) {
-	// Get source file info for permissions
-	info, err := os.Stat(src)
+	// Use Lstat to avoid following symlinks
+	info, err := os.Lstat(src)
 	if err != nil {
 		return err
+	}
+
+	// Security: refuse to copy symlinks to prevent attacks
+	if info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("refusing to copy symlink: %s", src)
 	}
 
 	srcFile, err := os.Open(src)
@@ -516,10 +519,9 @@ func (m *Manager) GetOldestAndNewest() (oldest, newest time.Time, err error) {
 	newest = items[0].DeletionDate
 	oldest = items[len(items)-1].DeletionDate
 
-return oldest, newest, nil
+	return oldest, newest, nil
 }
 
-// validateFileName checks for path traversal attempts in filenames
 // validateFileName checks for path traversal attempts in filenames
 func validateFileName(name string) error {
 	// Block empty names
@@ -542,10 +544,9 @@ func validateFileName(name string) error {
 		return fmt.Errorf("filename contains null byte")
 	}
 
-return nil
+	return nil
 }
 
-// isCrossDeviceError checks if the error is a cross-device link error
 // isCrossDeviceError checks if the error is a cross-device link error
 func isCrossDeviceError(err error) bool {
 	if err == nil {
