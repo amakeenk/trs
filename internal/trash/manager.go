@@ -248,6 +248,34 @@ func (m *Manager) ListFromDir(trashDir string) ([]TrashItem, error) {
 	return items, nil
 }
 
+// validateRestorePath validates the restore path to prevent security issues
+func validateRestorePath(path string) error {
+	// Must be absolute
+	if !filepath.IsAbs(path) {
+		return fmt.Errorf("invalid restore path: must be absolute")
+	}
+
+	// Check for path traversal
+	cleanPath := filepath.Clean(path)
+	if strings.Contains(cleanPath, "..") {
+		return fmt.Errorf("invalid restore path: path traversal detected")
+	}
+
+	// Block system paths
+	systemPaths := []string{
+		"/etc/", "/root/", "/boot/", "/dev/", "/proc/", "/sys/",
+		"/usr/", "/bin/", "/sbin/", "/lib/", "/lib64/",
+	}
+	for _, sysPath := range systemPaths {
+		if strings.HasPrefix(cleanPath, sysPath) {
+			return fmt.Errorf("refusing to restore to system path: %s", path)
+		}
+	}
+
+	return nil
+}
+
+
 // Restore restores a file from the trash
 func (m *Manager) Restore(trashName string, overwrite bool) error {
 	return m.RestoreFromDir(m.homeTrash, trashName, overwrite)
@@ -261,12 +289,17 @@ func (m *Manager) RestoreFromDir(trashDir, trashName string, overwrite bool) err
 		return fmt.Errorf("read trashinfo: %w", err)
 	}
 
+	// Security: validate path from trashinfo to prevent malicious paths
+	if err := validateRestorePath(ti.Path); err != nil {
+		return fmt.Errorf("invalid restore path: %w", err)
+	}
+
 	srcPath := FilesPath(trashDir, trashName)
 	if _, err := os.Stat(srcPath); err != nil {
 		return fmt.Errorf("file not in trash: %s", trashName)
 	}
 
-	// Check if destination exists
+
 	if _, err := os.Stat(ti.Path); err == nil {
 		if !overwrite {
 			return fmt.Errorf("destination exists: %s (use --force to overwrite)", ti.Path)

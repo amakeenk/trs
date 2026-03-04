@@ -640,3 +640,95 @@ func TestEnsureTrashDirError(t *testing.T) {
 	assert.DirExists(t, filepath.Join(trashDir, "files"))
 	assert.DirExists(t, filepath.Join(trashDir, "info"))
 }
+
+func TestValidateRestorePath(t *testing.T) {
+	tests := []struct {
+		name      string
+		path      string
+		wantError bool
+	}{
+		{
+			name:      "valid home path",
+			path:      "/home/user/Documents/file.txt",
+			wantError: false,
+		},
+		{
+			name:      "valid tmp path",
+			path:      "/tmp/test.txt",
+			wantError: false,
+		},
+		{
+			name:      "relative path",
+			path:      "relative/path.txt",
+			wantError: true,
+		},
+
+		{
+			name:      "system path /etc",
+			path:      "/etc/passwd",
+			wantError: true,
+		},
+		{
+			name:      "system path /usr",
+			path:      "/usr/bin/program",
+			wantError: true,
+		},
+		{
+			name:      "system path /root",
+			path:      "/root/.bashrc",
+			wantError: true,
+		},
+		{
+			name:      "system path /boot",
+			path:      "/boot/vmlinuz",
+			wantError: true,
+		},
+		{
+			name:      "system path /dev",
+			path:      "/dev/null",
+			wantError: true,
+		},
+		{
+			name:      "system path /proc",
+			path:      "/proc/self/cmdline",
+			wantError: true,
+		},
+		{
+			name:      "system path /sys",
+			path:      "/sys/kernel",
+			wantError: true,
+		},
+		{
+			name:      "system path /bin",
+			path:      "/bin/bash",
+			wantError: true,
+		},
+		{
+			name:      "system path /sbin",
+			path:      "/sbin/init",
+			wantError: true,
+		},
+		{
+			name:      "system path /lib",
+			path:      "/lib/x86_64-linux-gnu/libc.so",
+			wantError: true,
+		},
+		{
+			name:      "system path /lib64",
+			path:      "/lib64/ld-linux-x86-64.so",
+			wantError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateRestorePath(tt.path)
+			if tt.wantError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
