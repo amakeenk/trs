@@ -285,6 +285,41 @@ Key patterns:
 5. **Name conflicts** - Append `_1`, `_2`, etc. suffix to name in trash
 6. **Volume trash** - Use `$VOLUME/.Trash-$UID/` for cross-filesystem files
 
+## Security Considerations
+
+This codebase implements several security measures to prevent common attacks:
+
+### Symlink Attacks
+
+- **copyFile()** uses `os.Lstat()` and rejects symlinks - never follows symlinks when copying
+- **safeRemoveAll()** removes directory contents without following symlinks in subdirectories
+- **EnsureTrashDir()** validates that trash directories are not symlinks and have proper ownership
+
+### Path Traversal
+
+- **validateRestorePath()** uses `filepath.Rel()` to ensure restore paths don't escape intended directories
+- **validateFileName()** rejects path separators and parent directory references
+
+### TrashInfo Validation
+
+- Paths from `.trashinfo` files are validated:
+  - Must be absolute paths
+  - Cannot contain null bytes
+  - Maximum length of 4096 characters
+- File size limited to 8KB to prevent memory exhaustion
+- Scanner line length limited to prevent DoS
+
+### DoS Prevention
+
+- **resolveNameConflict()** has 10000 iteration limit
+- All file parsing has size limits
+
+### When modifying security-related code:
+
+1. Always use `os.Lstat()` instead of `os.Stat()` when checking file info
+2. Never follow symlinks when operating on user-controlled paths
+3. Validate all paths from external sources (files, env vars)
+4. Add iteration limits to any potentially infinite loops
 ## Dependencies
 
 Core:
