@@ -1,9 +1,11 @@
 package trash
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 )
 
@@ -175,4 +177,60 @@ func GetTrashDirForPath(path string) (string, error) {
 	}
 
 	return trashDir, nil
+}
+
+// GetAllTrashDirs returns all trash directories that exist
+// This includes home trash and any volume trash directories
+func GetAllTrashDirs() ([]string, error) {
+	var dirs []string
+	uid := os.Getuid()
+
+	// Always add home trash first
+	homeTrash, err := HomeTrashDir()
+	if err != nil {
+		return nil, err
+	}
+	dirs = append(dirs, homeTrash)
+
+	// Parse mount points from /proc/mounts
+	mounts, err := os.Open("/proc/mounts")
+	if err != nil {
+		// If /proc/mounts doesn't exist, just return home trash
+		return dirs, nil
+	}
+	defer mounts.Close()
+
+	// Track seen mount points to avoid duplicates (bind mounts)
+	seen := make(map[string]bool)
+	homeMount, err := getMountPoint(homeTrash)
+	if err == nil {
+		seen[homeMount] = true
+	}
+
+	scanner := bufio.NewScanner(mounts)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if len(line) == 0 {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+		mountPoint := fields[1]
+
+		// Skip if already seen (handles bind mounts)
+		if seen[mountPoint] {
+			continue
+		}
+		seen[mountPoint] = true
+
+		// Check for volume trash directory
+		volumeTrash := filepath.Join(mountPoint, fmt.Sprintf(".Trash-%d", uid))
+		if fi, err := os.Stat(volumeTrash); err == nil && fi.IsDir() {
+			dirs = append(dirs, volumeTrash)
+		}
+	}
+
+	return dirs, nil
 }

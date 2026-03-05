@@ -113,7 +113,7 @@ func TestManager_RestoreNonExistent(t *testing.T) {
 
 	err = mgr.Restore("nonexistent.txt", false)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "read trashinfo")
+	assert.Contains(t, err.Error(), "file not in trash")
 }
 
 func TestManager_RestoreFileNotInTrash(t *testing.T) {

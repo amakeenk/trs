@@ -18,6 +18,7 @@ type TrashItem struct {
 	DeletionDate time.Time // When it was trashed
 	Size         int64     // Size in bytes
 	IsDir        bool      // Is directory
+	TrashDir     string    // Trash directory containing this item
 }
 
 // Manager handles trash operations
@@ -42,7 +43,7 @@ func (m *Manager) Move(path string) error {
 		return fmt.Errorf("get absolute path: %w", err)
 	}
 
-// Check if path exists (use Lstat for symlinks)
+	// Check if path exists (use Lstat for symlinks)
 	_, err = os.Lstat(absPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -247,9 +248,30 @@ func (m *Manager) resolveNameConflict(trashDir, name string) (string, error) {
 	}
 }
 
-// List returns all items in the trash
+// List returns all items in the trash from all directories
 func (m *Manager) List() ([]TrashItem, error) {
-	return m.ListFromDir(m.homeTrash)
+	// Get all trash directories (home + volumes)
+	dirs, err := GetAllTrashDirs()
+	if err != nil {
+		return nil, fmt.Errorf("get trash directories: %w", err)
+	}
+
+	var allItems []TrashItem
+	for _, dir := range dirs {
+		items, err := m.ListFromDir(dir)
+		if err != nil {
+			// Continue to next directory on error
+			continue
+		}
+		allItems = append(allItems, items...)
+	}
+
+	// Sort by deletion date, newest first
+	sort.Slice(allItems, func(i, j int) bool {
+		return allItems[i].DeletionDate.After(allItems[j].DeletionDate)
+	})
+
+	return allItems, nil
 }
 
 // ListFromDir returns items from a specific trash directory
@@ -284,6 +306,7 @@ func (m *Manager) ListFromDir(trashDir string) ([]TrashItem, error) {
 			DeletionDate: ti.DeletionDate,
 			Size:         info.Size(),
 			IsDir:        entry.IsDir(),
+			TrashDir:     trashDir,
 		})
 	}
 
@@ -331,10 +354,47 @@ func validateRestorePath(path string) error {
 	return nil
 }
 
-
-// Restore restores a file from the trash
+// Restore restores a file from the trash by searching all directories
 func (m *Manager) Restore(trashName string, overwrite bool) error {
-	return m.RestoreFromDir(m.homeTrash, trashName, overwrite)
+	// Search all trash directories for the item
+	dirs, err := GetAllTrashDirs()
+	if err != nil {
+		return fmt.Errorf("get trash directories: %w", err)
+	}
+
+	var lastErr error
+	for _, dir := range dirs {
+		err := m.RestoreFromDir(dir, trashName, overwrite)
+		if err == nil {
+			return nil // Successfully restored
+		}
+		// If error is "not found in this directory", continue to next
+		// If error is something else (file found but restore failed), return it
+		if isNotFoundError(err) {
+			continue
+		}
+		lastErr = err
+	}
+
+	if lastErr != nil {
+		return lastErr
+	}
+	return fmt.Errorf("file not in trash: %s", trashName)
+}
+
+// isNotFoundError checks if the error indicates the file is not in this trash directory
+func isNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+	// Check for os.IsNotExist errors (trashinfo or file missing)
+	if os.IsNotExist(err) {
+		return true
+	}
+	// Check for our "read trashinfo" error wrapper
+	errStr := err.Error()
+	return strings.Contains(errStr, "read trashinfo") ||
+		strings.Contains(errStr, "file not in trash")
 }
 
 // RestoreFromDir restores from a specific trash directory
@@ -356,7 +416,7 @@ func (m *Manager) RestoreFromDir(trashDir, trashName string, overwrite bool) err
 		return fmt.Errorf("file not in trash: %s", trashName)
 	}
 
-// Use Lstat to avoid symlink following attacks
+	// Use Lstat to avoid symlink following attacks
 	if fi, err := os.Lstat(ti.Path); err == nil {
 		if !overwrite {
 			return fmt.Errorf("destination exists: %s (use --force to overwrite)", ti.Path)
@@ -422,9 +482,20 @@ func (m *Manager) Empty() error {
 	return m.EmptyOlderThan(0)
 }
 
-// EmptyOlderThan clears items older than days days
+// EmptyOlderThan clears items older than days days from all directories
 func (m *Manager) EmptyOlderThan(days int) error {
-	return m.EmptyDirOlderThan(m.homeTrash, days)
+	dirs, err := GetAllTrashDirs()
+	if err != nil {
+		return fmt.Errorf("get trash directories: %w", err)
+	}
+
+	for _, dir := range dirs {
+		if err := m.EmptyDirOlderThan(dir, days); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // EmptyDirOlderThan clears items from a specific trash directory
@@ -456,9 +527,23 @@ func (m *Manager) EmptyDirOlderThan(trashDir string, days int) error {
 	return nil
 }
 
-// Status returns statistics about the trash
+// Status returns statistics about the trash from all directories
 func (m *Manager) Status() (count int, totalSize int64, err error) {
-	return m.StatusFromDir(m.homeTrash)
+	dirs, err := GetAllTrashDirs()
+	if err != nil {
+		return 0, 0, fmt.Errorf("get trash directories: %w", err)
+	}
+
+	for _, dir := range dirs {
+		c, s, err := m.StatusFromDir(dir)
+		if err != nil {
+			continue
+		}
+		count += c
+		totalSize += s
+	}
+
+	return count, totalSize, nil
 }
 
 // StatusFromDir returns statistics from a specific trash directory
@@ -555,7 +640,7 @@ func validateFileName(name string) error {
 		return fmt.Errorf("filename contains null byte")
 	}
 
-return nil
+	return nil
 }
 
 // safeRemoveAll removes a path without following symlinks in subdirectories
@@ -591,6 +676,7 @@ func safeRemoveAll(path string) error {
 
 	return os.RemoveAll(path)
 }
+
 // isCrossDeviceError checks if the error is a cross-device link error
 func isCrossDeviceError(err error) bool {
 	if err == nil {
