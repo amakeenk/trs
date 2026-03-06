@@ -1042,6 +1042,88 @@ func TestRestoreFromDir(t *testing.T) {
 	// Verify file restored
  assert.FileExists(t, originalPath)
 }
+// TestRestoreFromDirWithExistingDestination tests RestoreFromDir with existing destination
+func TestRestoreFromDirWithExistingDestination(t *testing.T) {
+	tmpHome := t.TempDir()
+	xdgData := filepath.Join(tmpHome, ".local", "share")
+	t.Setenv("XDG_DATA_HOME", xdgData)
+	t.Setenv("HOME", tmpHome)
+
+	mgr, err := NewManager()
+ require.NoError(t, err)
+
+	tmpDir := t.TempDir()
+	originalPath := filepath.Join(tmpDir, "test_existing.txt")
+ require.NoError(t, os.WriteFile(originalPath, []byte("original"), 0644))
+ require.NoError(t, mgr.Move(originalPath))
+
+	// Create a new file at the same location
+ require.NoError(t, os.WriteFile(originalPath, []byte("new"), 0644))
+
+	trashDir := filepath.Join(xdgData, "Trash")
+	err = mgr.RestoreFromDir(trashDir, "test_existing.txt", false)
+ require.Error(t, err)
+	assert.Contains(t, err.Error(), "destination exists")
+}
+
+// TestRestoreFromDirWithSymlinkDestination tests RestoreFromDir with symlink destination
+func TestRestoreFromDirWithSymlinkDestination(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("Skipping test when running as root")
+	}
+
+	tmpHome := t.TempDir()
+	xdgData := filepath.Join(tmpHome, ".local", "share")
+	t.Setenv("XDG_DATA_HOME", xdgData)
+	t.Setenv("HOME", tmpHome)
+
+	mgr, err := NewManager()
+ require.NoError(t, err)
+
+	tmpDir := t.TempDir()
+	originalPath := filepath.Join(tmpDir, "test_symlink.txt")
+ require.NoError(t, os.WriteFile(originalPath, []byte("content"), 0644))
+ require.NoError(t, mgr.Move(originalPath))
+
+	// Create a symlink at the same location
+	target := filepath.Join(tmpDir, "target.txt")
+ require.NoError(t, os.WriteFile(target, []byte("target"), 0644))
+ require.NoError(t, os.Symlink(target, originalPath))
+
+	trashDir := filepath.Join(xdgData, "Trash")
+	err = mgr.RestoreFromDir(trashDir, "test_symlink.txt", true)
+ require.Error(t, err)
+	assert.Contains(t, err.Error(), "symlink")
+}
+
+// TestRestoreFromDirWithInvalidPath tests RestoreFromDir with invalid restore path
+func TestRestoreFromDirWithInvalidPath(t *testing.T) {
+	tmpHome := t.TempDir()
+	xdgData := filepath.Join(tmpHome, ".local", "share")
+	t.Setenv("XDG_DATA_HOME", xdgData)
+	t.Setenv("HOME", tmpHome)
+
+	// Create trash directory structure
+	trashDir := filepath.Join(xdgData, "Trash")
+ require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "files"), 0755))
+ require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "info"), 0755))
+
+	// Create a file in trash
+	trashFile := filepath.Join(trashDir, "files", "test_invalid.txt")
+ require.NoError(t, os.WriteFile(trashFile, []byte("content"), 0644))
+
+	// Create trashinfo with invalid path (system path)
+	trashInfo := filepath.Join(trashDir, "info", "test_invalid.txt.trashinfo")
+	infoContent := fmt.Sprintf("[Trash Info]\nPath=/etc/passwd\nDeletionDate=%s\n", time.Now().Format("2006-01-02T15:04:05"))
+ require.NoError(t, os.WriteFile(trashInfo, []byte(infoContent), 0644))
+
+	mgr, err := NewManager()
+ require.NoError(t, err)
+
+	err = mgr.RestoreFromDir(trashDir, "test_invalid.txt", false)
+ require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid restore path")
+}
 // TestCopyFileWithOpenError tests copyFile with destination open error
 func TestCopyFileWithOpenError(t *testing.T) {
 	if os.Getuid() == 0 {
