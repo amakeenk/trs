@@ -140,7 +140,7 @@ func EnsureTrashDir(trashDir string) error {
 		}
 		// Verify permissions (should be 0700)
 		if fi.Mode().Perm() != 0700 {
-			return fmt.Errorf("trash directory has insecure permissions: %s (expected 0700, got %03o)", trashDir, fi.Mode().Perm())
+			return fmt.Errorf("trash directory has insecure permissions: %s (expected 0700, got %03o). Fix with: chmod 0700 '%s'", trashDir, fi.Mode().Perm(), trashDir)
 		}
 	}
 
