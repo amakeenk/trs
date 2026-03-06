@@ -880,6 +880,42 @@ func TestCopyAndDeleteWithNonExistent(t *testing.T) {
  require.Error(t, err)
 }
 
+// TestCopyAndDeleteWithCopyError tests copyAndDelete when copyFile fails
+func TestCopyAndDeleteWithCopyError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("Skipping test when running as root")
+	}
+
+	tmpHome := t.TempDir()
+	xdgData := filepath.Join(tmpHome, ".local", "share")
+	t.Setenv("XDG_DATA_HOME", xdgData)
+	t.Setenv("HOME", tmpHome)
+
+	mgr, err := NewManager()
+ require.NoError(t, err)
+
+	tmpDir := t.TempDir()
+	srcFile := filepath.Join(tmpDir, "src.txt")
+ require.NoError(t, os.WriteFile(srcFile, []byte("content"), 0644))
+
+	// Create a directory for destination and make it read-only
+	dstDir := filepath.Join(tmpDir, "readonly")
+ require.NoError(t, os.MkdirAll(dstDir, 0755))
+ require.NoError(t, os.Chmod(dstDir, 0500))
+ defer os.Chmod(dstDir, 0755)
+
+	dstFile := filepath.Join(dstDir, "dst.txt")
+
+	err = mgr.copyAndDelete(srcFile, dstFile)
+	// Should fail because destination directory is read-only
+ require.Error(t, err)
+	// Source should still exist
+ assert.FileExists(t, srcFile)
+	// Destination should not exist (cleanup)
+ assert.NoFileExists(t, dstFile)
+}
+
+
 // TestCopyDirAndDeleteWithMkdirError tests copyDirAndDelete with mkdir error
 func TestCopyDirAndDeleteWithMkdirError(t *testing.T) {
 	if os.Getuid() == 0 {
