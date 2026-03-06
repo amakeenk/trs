@@ -187,3 +187,91 @@ func TestVersionJSON(t *testing.T) {
 
 	require.Contains(t, output, "version")
 }
+
+// Test status with empty trash and verbose flag
+func TestStatusEmptyVerbose(t *testing.T) {
+	setupTestEnv(t)
+
+	oldJSON := flagJSON
+	oldVerbose := statusVerbose
+	flagJSON = false
+	statusVerbose = true
+	defer func() {
+		flagJSON = oldJSON
+		statusVerbose = oldVerbose
+	}()
+
+	output := captureStdout(t, func() {
+		runStatus(nil, nil)
+	})
+
+	require.Contains(t, output, "0 files")
+}
+
+// Test restoreInteractive with non-empty trash and JSON flag
+func TestRestoreInteractiveJSON(t *testing.T) {
+	setupTestEnv(t)
+
+	mgr, err := trash.NewManager()
+	require.NoError(t, err)
+
+	tmpDir := t.TempDir()
+	file := filepath.Join(tmpDir, "test.json")
+	require.NoError(t, os.WriteFile(file, []byte("hello"), 0644))
+	require.NoError(t, mgr.Move(file))
+
+	oldJSON := flagJSON
+	flagJSON = true
+	defer func() { flagJSON = oldJSON }()
+
+	// Redirect stdin to provide input
+	oldStdin := os.Stdin
+	r, w, _ := os.Pipe()
+	os.Stdin = r
+
+	go func() {
+		w.Write([]byte("1\n"))
+		w.Close()
+	}()
+
+	output := captureStdout(t, func() {
+		restoreInteractive(mgr)
+	})
+
+	os.Stdin = oldStdin
+	require.Contains(t, output, "test.json")
+}
+
+// Test runEmpty with empty trash and text output
+func TestEmptyEmptyText(t *testing.T) {
+	setupTestEnv(t)
+
+	oldJSON := flagJSON
+	flagJSON = false
+	defer func() { flagJSON = oldJSON }()
+
+	output := captureStdout(t, func() {
+		runEmpty(nil, nil)
+	})
+
+	require.Contains(t, output, "Trash is empty")
+}
+
+// Test runStatus with JSON and empty trash
+func TestStatusEmptyJSON(t *testing.T) {
+	setupTestEnv(t)
+
+	oldJSON := flagJSON
+	flagJSON = true
+	defer func() { flagJSON = oldJSON }()
+
+	output := captureStdout(t, func() {
+		runStatus(nil, nil)
+	})
+
+	require.Contains(t, output, "count")
+	require.Contains(t, output, "0")
+}
+
+// Test restoreByInput with text output and restore error
+
