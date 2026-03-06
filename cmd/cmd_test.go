@@ -2692,27 +2692,167 @@ func TestRestoreSpecificListError(t *testing.T) {
 	t.Skip("error paths tested via integration tests")
 }
 
-// TestRunStatusError - placeholder for error path
+// TestRunStatusError tests runStatus with manager error
 func TestRunStatusError(t *testing.T) {
-	t.Skip("error paths tested via integration tests")
+	if os.Getenv("GO_TEST_STATUS_ERROR") == "1" {
+		// Create invalid trash state
+		tmpHome := t.TempDir()
+ t.Setenv("XDG_DATA_HOME", filepath.Join(tmpHome, ".local", "share"))
+ t.Setenv("HOME", tmpHome)
+
+		// Create corrupted trash directory
+ trashDir := filepath.Join(tmpHome, ".local", "share", "Trash")
+ require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "info"), 0755))
+ require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "files"), 0755))
+
+		// Create invalid .trashinfo file
+ infoFile := filepath.Join(trashDir, "info", "bad.trashinfo")
+ require.NoError(t, os.WriteFile(infoFile, []byte("invalid"), 0644))
+
+		// This should not crash
+ runStatus(nil, nil)
+ return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestRunStatusError")
+ cmd.Env = append(os.Environ(), "GO_TEST_STATUS_ERROR=1")
+ output, err := cmd.CombinedOutput()
+ require.NoError(t, err, "output: %s", output)
 }
 
-// TestRunEmptyManagerError - placeholder for error path
+// TestRunEmptyManagerError tests runEmpty with manager error
 func TestRunEmptyManagerError(t *testing.T) {
-	t.Skip("error paths tested via integration tests")
+	if os.Getenv("GO_TEST_EMPTY_MGR_ERROR") == "1" {
+		// Create invalid trash state
+ tmpHome := t.TempDir()
+ t.Setenv("XDG_DATA_HOME", filepath.Join(tmpHome, ".local", "share"))
+ t.Setenv("HOME", tmpHome)
+
+		// Create corrupted trash directory
+ trashDir := filepath.Join(tmpHome, ".local", "share", "Trash")
+ require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "info"), 0755))
+ require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "files"), 0755))
+
+		// Create invalid .trashinfo file
+ infoFile := filepath.Join(trashDir, "info", "bad.trashinfo")
+ require.NoError(t, os.WriteFile(infoFile, []byte("invalid"), 0644))
+
+		// Set flags
+ oldJSON := flagJSON
+ oldForce := flagForce
+ flagJSON = true
+ flagForce = true
+ defer func() {
+ flagJSON = oldJSON
+ flagForce = oldForce
+ }()
+
+		// This should not crash
+ runEmpty(nil, nil)
+ return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestRunEmptyManagerError")
+ cmd.Env = append(os.Environ(), "GO_TEST_EMPTY_MGR_ERROR=1")
+ output, err := cmd.CombinedOutput()
+ require.NoError(t, err, "output: %s", output)
 }
 
-// TestRunRestoreManagerError - placeholder for error path
+// TestRunRestoreManagerError tests runRestore with manager error
 func TestRunRestoreManagerError(t *testing.T) {
-	t.Skip("error paths tested via integration tests")
+	if os.Getenv("GO_TEST_RESTORE_MGR_ERROR") == "1" {
+		// Create invalid trash state
+ tmpHome := t.TempDir()
+ t.Setenv("XDG_DATA_HOME", filepath.Join(tmpHome, ".local", "share"))
+ t.Setenv("HOME", tmpHome)
+
+		// Create corrupted trash directory
+ trashDir := filepath.Join(tmpHome, ".local", "share", "Trash")
+ require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "info"), 0755))
+ require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "files"), 0755))
+
+		// Create invalid .trashinfo file
+ infoFile := filepath.Join(trashDir, "info", "bad.trashinfo")
+ require.NoError(t, os.WriteFile(infoFile, []byte("invalid"), 0644))
+
+		// Set flags
+ oldJSON := flagJSON
+ flagJSON = true
+ defer func() { flagJSON = oldJSON }()
+
+		// This should not crash
+ runRestore(nil, nil)
+ return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestRunRestoreManagerError")
+ cmd.Env = append(os.Environ(), "GO_TEST_RESTORE_MGR_ERROR=1")
+ output, err := cmd.CombinedOutput()
+ require.NoError(t, err, "output: %s", output)
 }
 
-// TestRunListManagerError - placeholder for error path
+// TestRunListManagerError tests runList with manager error
 func TestRunListManagerError(t *testing.T) {
-	t.Skip("error paths tested via integration tests")
+	if os.Getenv("GO_TEST_LIST_MGR_ERROR") == "1" {
+		// Create invalid trash state
+ tmpHome := t.TempDir()
+ t.Setenv("XDG_DATA_HOME", filepath.Join(tmpHome, ".local", "share"))
+ t.Setenv("HOME", tmpHome)
+
+		// Create corrupted trash directory
+ trashDir := filepath.Join(tmpHome, ".local", "share", "Trash")
+ require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "info"), 0755))
+ require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "files"), 0755))
+
+		// Create invalid .trashinfo file
+ infoFile := filepath.Join(trashDir, "info", "bad.trashinfo")
+ require.NoError(t, os.WriteFile(infoFile, []byte("invalid"), 0644))
+
+		// Set flags
+ oldJSON := flagJSON
+ flagJSON = true
+ defer func() { flagJSON = oldJSON }()
+
+		// This should not crash
+ runList(nil, nil)
+ return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestRunListManagerError")
+ cmd.Env = append(os.Environ(), "GO_TEST_LIST_MGR_ERROR=1")
+ output, err := cmd.CombinedOutput()
+ require.NoError(t, err, "output: %s", output)
 }
 
-// TestRestoreSpecificManagerError - placeholder for error path
+// TestRestoreSpecificManagerError tests restoreSpecific with manager error
 func TestRestoreSpecificManagerError(t *testing.T) {
-	t.Skip("error paths tested via integration tests")
+	if os.Getenv("GO_TEST_RESTORE_SPECIFIC_MGR_ERROR") == "1" {
+		// Create invalid trash state
+ tmpHome := t.TempDir()
+ t.Setenv("XDG_DATA_HOME", filepath.Join(tmpHome, ".local", "share"))
+ t.Setenv("HOME", tmpHome)
+
+		// Create corrupted trash directory
+ trashDir := filepath.Join(tmpHome, ".local", "share", "Trash")
+ require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "info"), 0755))
+ require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "files"), 0755))
+
+		// Create invalid .trashinfo file
+ infoFile := filepath.Join(trashDir, "info", "bad.trashinfo")
+ require.NoError(t, os.WriteFile(infoFile, []byte("invalid"), 0644))
+
+		// Try to restore
+ restoreSpecific(nil, "1")
+ return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestRestoreSpecificManagerError")
+ cmd.Env = append(os.Environ(), "GO_TEST_RESTORE_SPECIFIC_MGR_ERROR=1")
+ err := cmd.Run()
+ // Should exit with error
+ if e, ok := err.(*exec.ExitError); ok {
+ assert.NotEqual(t, 0, e.ExitCode())
+	} else {
+		t.Fatalf("expected exit error, got: %v", err)
+	}
 }
