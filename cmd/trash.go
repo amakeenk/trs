@@ -11,7 +11,6 @@ import (
 
 var (
 	flagRecursive bool
-	flagRMMode    bool
 )
 
 // TrashResult for JSON output
@@ -24,7 +23,6 @@ type TrashResult struct {
 
 func init() {
 	rootCmd.Flags().BoolVarP(&flagRecursive, "recursive", "r", false, "remove directories recursively")
-	rootCmd.Flags().BoolVar(&flagRMMode, "rm", false, "rm compatibility mode (for alias)")
 }
 
 func runTrash(cmd *cobra.Command, args []string) {
