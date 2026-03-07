@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-03-07
+
+### Added
+- Shell completion support for bash, zsh, fish, and powershell via `trs completion` command
+- File completion for trs command arguments
+
 ## [0.4.1] - 2026-03-07
 
 ### Fixed
@@ -85,7 +91,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - github.com/spf13/cobra - CLI framework
 - github.com/stretchr/testify - Testing assertions
 
-[Unreleased]: https://altlinux.space/amakeenk/trs/compare/v0.4.1...HEAD
+[Unreleased]: https://altlinux.space/amakeenk/trs/compare/v0.4.2...HEAD
+[0.4.2]: https://altlinux.space/amakeenk/trs/compare/v0.4.1...v0.4.2
 [0.4.1]: https://altlinux.space/amakeenk/trs/compare/v0.4.0...v0.4.1
 [0.4.0]: https://altlinux.space/amakeenk/trs/compare/v0.3.0...v0.4.0
 [0.3.0]: https://altlinux.space/amakeenk/trs/compare/v0.2.0...v0.3.0
