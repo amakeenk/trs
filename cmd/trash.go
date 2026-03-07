@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/amakeenk/trs/internal/trash"
+	"altlinux.space/amakeenk/trs/internal/trash"
 	"github.com/spf13/cobra"
 )
 

@@ -81,7 +81,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/amakeenk/trs/internal/trash"
+	"altlinux.space/amakeenk/trs/internal/trash"
 )
 ```
 

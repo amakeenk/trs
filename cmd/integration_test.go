@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/amakeenk/trs/internal/trash"
+	"altlinux.space/amakeenk/trs/internal/trash"
 	"github.com/stretchr/testify/require"
 )
 

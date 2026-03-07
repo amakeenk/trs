@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/amakeenk/trs/internal/trash"
-	"github.com/amakeenk/trs/internal/ui"
+	"altlinux.space/amakeenk/trs/internal/trash"
+	"altlinux.space/amakeenk/trs/internal/ui"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"

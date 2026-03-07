@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/amakeenk/trs/internal/trash"
-	"github.com/amakeenk/trs/internal/ui"
+	"altlinux.space/amakeenk/trs/internal/trash"
+	"altlinux.space/amakeenk/trs/internal/ui"
 	"github.com/spf13/cobra"
 )
 

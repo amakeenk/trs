@@ -15,9 +15,9 @@ BINARY_NAME=trs
 BINARY_UNIX=$(BINARY_NAME)_unix
 
 # Build flags
-LDFLAGS=-ldflags "-X github.com/amakeenk/trs/internal/version.Version=$(VERSION) \
-	-X github.com/amakeenk/trs/internal/version.GitCommit=$(GIT_COMMIT) \
-	-X github.com/amakeenk/trs/internal/version.BuildDate=$(BUILD_DATE)"
+LDFLAGS=-ldflags "-X altlinux.space/amakeenk/trs/internal/version.Version=$(VERSION) \
+	-X altlinux.space/amakeenk/trs/internal/version.GitCommit=$(GIT_COMMIT) \
+	-X altlinux.space/amakeenk/trs/internal/version.BuildDate=$(BUILD_DATE)"
 
 .PHONY: all build clean test coverage install uninstall version
 

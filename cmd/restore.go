@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/amakeenk/trs/internal/trash"
-	"github.com/amakeenk/trs/internal/tui"
-	"github.com/amakeenk/trs/internal/ui"
+	"altlinux.space/amakeenk/trs/internal/trash"
+	"altlinux.space/amakeenk/trs/internal/tui"
+	"altlinux.space/amakeenk/trs/internal/ui"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 )

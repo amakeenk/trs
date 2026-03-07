@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/amakeenk/trs/cmd"
+	"altlinux.space/amakeenk/trs/cmd"
 )
 
 func main() {

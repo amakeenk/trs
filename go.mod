@@ -1,4 +1,4 @@
-module github.com/amakeenk/trs
+module altlinux.space/amakeenk/trs
 
 go 1.24.2
 

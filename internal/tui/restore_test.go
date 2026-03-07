@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/amakeenk/trs/internal/trash"
+	"altlinux.space/amakeenk/trs/internal/trash"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tea "github.com/charmbracelet/bubbletea"
