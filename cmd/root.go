@@ -24,6 +24,7 @@ Files are moved according to the XDG Trash specification:
 - Cross-device files go to $VOLUME/.Trash-$UID/`,
 	Run:  runTrash,
 	Args: cobra.ArbitraryArgs,
+	ValidArgsFunction: fileCompletion,
 }
 
 func Execute() error {
@@ -41,6 +42,12 @@ func init() {
 	rootCmd.AddCommand(NewRestoreCmd())
 	rootCmd.AddCommand(NewEmptyCmd())
 	rootCmd.AddCommand(NewStatusCmd())
+	rootCmd.AddCommand(newCompletionCmd())
+}
+
+// fileCompletion enables shell file completion for arguments
+func fileCompletion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return nil, cobra.ShellCompDirectiveDefault
 }
 
 // exitWithError prints error and exits with code
