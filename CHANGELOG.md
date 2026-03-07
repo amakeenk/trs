@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-03-07
+
+### Fixed
+- Allow /usr/src paths for restore validation (fixes RPM build test failures)
+
+### Added
+- Man page (trs.1) with install-man/uninstall-man Makefile targets
+
 ## [0.4.0] - 2026-03-07
 
 ### Fixed
@@ -77,7 +85,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - github.com/spf13/cobra - CLI framework
 - github.com/stretchr/testify - Testing assertions
 
-[Unreleased]: https://altlinux.space/amakeenk/trs/compare/v0.4.0...HEAD
+[Unreleased]: https://altlinux.space/amakeenk/trs/compare/v0.4.1...HEAD
+[0.4.1]: https://altlinux.space/amakeenk/trs/compare/v0.4.0...v0.4.1
 [0.4.0]: https://altlinux.space/amakeenk/trs/compare/v0.3.0...v0.4.0
 [0.3.0]: https://altlinux.space/amakeenk/trs/compare/v0.2.0...v0.3.0
 [0.2.0]: https://altlinux.space/amakeenk/trs/compare/v0.1.0...v0.2.0
