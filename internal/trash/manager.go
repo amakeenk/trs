@@ -343,7 +343,9 @@ func validateRestorePath(path string) error {
 	// Block system paths
 	systemPaths := []string{
 		"/etc/", "/root/", "/boot/", "/dev/", "/proc/", "/sys/",
-		"/usr/", "/bin/", "/sbin/", "/lib/", "/lib64/",
+		"/bin/", "/sbin/", "/lib/", "/lib64/",
+		"/usr/bin/", "/usr/sbin/", "/usr/lib/", "/usr/lib64/",
+		"/usr/share/", "/usr/include/",
 	}
 	for _, sysPath := range systemPaths {
 		if strings.HasPrefix(cleanPath, sysPath) {

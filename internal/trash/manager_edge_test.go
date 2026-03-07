@@ -672,9 +672,14 @@ func TestValidateRestorePath(t *testing.T) {
 			wantError: true,
 		},
 		{
-			name:      "system path /usr",
+			name:      "system path /usr/bin",
 			path:      "/usr/bin/program",
 			wantError: true,
+		},
+		{
+			name:      "valid /usr/src path (RPM build)",
+			path:      "/usr/src/tmp/test.txt",
+			wantError: false,
 		},
 		{
 			name:      "system path /root",
