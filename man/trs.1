@@ -1,0 +1,151 @@
+.TH TRS 1 "March 2026" "trs 0.4.0" "User Commands"
+.SH NAME
+trs \- safely move files to trash using the XDG Trash specification
+.SH SYNOPSIS
+.B trs
+[\fIOPTIONS\fR] \fIFILE\fR...
+.br
+.B trs
+\fICOMMAND\fR [\fIOPTIONS\fR]
+.SH DESCRIPTION
+.B trs
+(from TRaSh) is a secure CLI utility for moving files to trash instead
+of permanently deleting them. It follows the XDG Trash specification,
+making it compatible with desktop environments like GNOME and KDE.
+.PP
+Files are moved to:
+.IP \[bu] 2
+\fB$XDG_DATA_HOME/Trash\fR or \fB~/.local/share/Trash/\fR (home trash)
+.IP \[bu] 2
+\fB$VOLUME/.Trash-$UID/\fR (volume trash for cross-device files)
+.SH COMMANDS
+.TP
+.B trs [\fIFILE\fR...]
+Move files or directories to trash.
+.TP
+.B trs list
+List all files in trash with their index, name, size, and deletion date.
+.TP
+.B trs restore [\fINAME|INDEX\fR]
+Restore files from trash. Without arguments, shows interactive selection
+with fuzzy search. Use \fB--last\fR to restore the most recently trashed file.
+.TP
+.B trs empty [\fIOPTIONS\fR]
+Empty the trash. Use \fB--days N\fR to only remove files older than N days.
+.TP
+.B trs status
+Show trash statistics (file count, size, locations).
+.TP
+.B trs version
+Print version information.
+.SH OPTIONS
+.SS "Global Options"
+.TP
+.B \-f, \-\-force
+Ignore nonexistent files (when trashing).
+.TP
+.B \-r, \-\-recursive
+Remove directories and their contents recursively.
+.TP
+.B \-v, \-\-verbose
+Verbose output.
+.TP
+.B \-\-json
+Machine-readable JSON output.
+.TP
+.B \-h, \-\-help
+Show help message.
+.SS "Restore Options"
+.TP
+.B \-\-last
+Restore the most recently trashed file.
+.TP
+.B \-f, \-\-force
+Overwrite existing files when restoring.
+.SS "Empty Options"
+.TP
+.B \-\-days \fIN\fR
+Only remove files older than N days.
+.SS "Status Options"
+.TP
+.B \-v, \-\-verbose
+Show detailed statistics (oldest/newest dates, largest files).
+.SH EXIT CODES
+.TP
+.B 0
+Success
+.TP
+.B 1
+Error
+.TP
+.B 2
+Invalid usage
+.SH ENVIRONMENT
+.TP
+.B XDG_DATA_HOME
+Custom data directory (default: \fB~/.local/share\fR).
+.TP
+.B NO_COLOR
+If set, disable colored output.
+.SH FILES
+.TP
+.B ~/.local/share/Trash/files/
+Directory containing trashed files.
+.TP
+.B ~/.local/share/Trash/info/
+Directory containing .trashinfo metadata files.
+.TP
+.B $VOLUME/.Trash-$UID/
+Volume-specific trash directories for files on other filesystems.
+.SH SECURITY
+.B trs
+implements multiple security measures:
+.IP \[bu] 2
+Symlink protection — never follows symlinks when copying or removing
+.IP \[bu] 2
+Path validation — prevents path traversal attacks
+.IP \[bu] 2
+System path protection — refuses to restore to critical system directories
+.IP \[bu] 2
+TrashInfo validation — validates paths from .trashinfo files
+.IP \[bu] 2
+DoS prevention — size and iteration limits on all operations
+.SH EXAMPLES
+.TP
+.B trs file.txt
+Move a file to trash.
+.TP
+.B trs \-r directory/
+Move a directory to trash (recursive).
+.TP
+.B trs \-f nonexistent
+Force mode — ignore nonexistent files.
+.TP
+.B trs list \-\-json
+List all trashed files in JSON format.
+.TP
+.B trs restore
+Launch interactive TUI with fuzzy search.
+.TP
+.B trs restore \-\-last
+Restore the most recently trashed file.
+.TP
+.B trs restore config.json
+Restore a file by name.
+.TP
+.B trs restore 1
+Restore a file by index (from \fBtrs list\fR).
+.TP
+.B trs empty \-\-days 7
+Remove files older than 7 days.
+.TP
+.B trs status \-v
+Show detailed trash statistics.
+.SH SEE ALSO
+.BR rm (1),
+.BR gio (1),
+.BR kioclient (1)
+.SH AUTHOR
+Written by amakeenk.
+.SH LICENSE
+MIT License.

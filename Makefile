@@ -19,7 +19,7 @@ LDFLAGS=-ldflags "-X altlinux.space/amakeenk/trs/internal/version.Version=$(VERS
 	-X altlinux.space/amakeenk/trs/internal/version.GitCommit=$(GIT_COMMIT) \
 	-X altlinux.space/amakeenk/trs/internal/version.BuildDate=$(BUILD_DATE)"
 
-.PHONY: all build clean test coverage install uninstall version
+.PHONY: all build clean test coverage install install-man uninstall uninstall-man version
 
 all: clean build
 
@@ -45,8 +45,15 @@ clean:
 install:
 	$(GOBUILD) $(LDFLAGS) -o $(GOPATH)/bin/$(BINARY_NAME) .
 
+install-man:
+	install -d $(DESTDIR)/usr/share/man/man1
+	install -m 644 man/trs.1 $(DESTDIR)/usr/share/man/man1/
+
 uninstall:
 	rm -f $(GOPATH)/bin/$(BINARY_NAME)
+
+uninstall-man:
+	rm -f $(DESTDIR)/usr/share/man/man1/trs.1
 
 # Build for multiple platforms
 build-linux:
