@@ -102,7 +102,6 @@ func (tr *TrashRoot) MkdirInfo() error {
 // RemoveAllFiles recursively removes a file or directory from files/.
 // Unlike os.RemoveAll, this uses os.Root operations which are
 // traversal-resistant - symlinks cannot escape the root.
-// Returns an error if the path contains symlinks in subdirectories.
 func (tr *TrashRoot) RemoveAllFiles(name string) error {
 	return tr.removeAll(tr.FilesPath(name))
 }
@@ -123,7 +122,8 @@ func (tr *TrashRoot) removeAll(relPath string) error {
 		return tr.root.Remove(relPath)
 	}
 
-	// For directories, we need to check for symlinks and remove contents first
+	// For directories, we need to remove contents first
+	// Open the directory using root (traversal-resistant)
 	// Open the directory using root (traversal-resistant)
 	f, err := tr.root.Open(relPath)
 	if err != nil {
@@ -140,11 +140,6 @@ func (tr *TrashRoot) removeAll(relPath string) error {
 	// Recursively remove each entry
 	for _, entry := range entries {
 		entryPath := relPath + "/" + entry.Name()
-
-		// Check for symlinks - refuse to remove directories containing them
-		if entry.Type()&os.ModeSymlink != 0 {
-			return fmt.Errorf("refusing to remove directory containing symlink: %s", entryPath)
-		}
 
 		if err := tr.removeAll(entryPath); err != nil {
 			return err

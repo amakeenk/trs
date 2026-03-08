@@ -406,7 +406,7 @@ func TestRemoveAll(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("remove directory containing symlink fails", func(t *testing.T) {
+	t.Run("remove directory containing symlink succeeds", func(t *testing.T) {
 		// Create directory with a symlink inside
 		require.NoError(t, root.root.Mkdir("files/withsymlink", 0700))
 		f, err := root.root.Create("files/withsymlink/target.txt")
@@ -418,10 +418,13 @@ func TestRemoveAll(t *testing.T) {
 		symlinkPath := filepath.Join(filesDir, "withsymlink", "link")
 		require.NoError(t, os.Symlink(targetPath, symlinkPath))
 
-		// Remove should fail due to symlink
+		// Remove should succeed - symlinks are safe to remove via os.Root
 		err = root.RemoveAllFiles("withsymlink")
+		require.NoError(t, err)
+
+		// Verify directory is gone
+		_, err = root.LstatFiles("withsymlink")
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "symlink")
 	})
 }
 
@@ -457,7 +460,7 @@ func TestRemoveAllFilesSymlink(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestRemoveAllRecursiveError(t *testing.T) {
+func TestRemoveAllNestedSymlinkSucceeds(t *testing.T) {
 	tmpDir := t.TempDir()
 	trashDir := filepath.Join(tmpDir, "Trash")
 	filesDir := filepath.Join(trashDir, "files")
@@ -475,10 +478,13 @@ func TestRemoveAllRecursiveError(t *testing.T) {
 	// Create symlink inside nested directory
 	require.NoError(t, os.Symlink("/some/target", filepath.Join(filesDir, "nested", "sub", "link")))
 
-	// Remove should fail when encountering symlink in nested directory
+	// Remove should succeed - symlinks inside directories are safe to remove
 	err = root.RemoveAllFiles("nested")
+	require.NoError(t, err)
+
+	// Verify directory is gone
+	_, err = root.LstatFiles("nested")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "symlink")
 }
 
 func TestRemoveAllFilesError(t *testing.T) {

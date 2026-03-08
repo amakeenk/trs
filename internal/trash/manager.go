@@ -514,7 +514,6 @@ func (m *Manager) EmptyOlderThan(days int) error {
 	return nil
 }
 
-// EmptyDirOlderThan clears items from a specific trash directory
 func (m *Manager) EmptyDirOlderThan(trashDir string, days int) error {
 	items, err := m.ListFromDir(trashDir)
 	if err != nil {
@@ -526,26 +525,44 @@ func (m *Manager) EmptyDirOlderThan(trashDir string, days int) error {
 		cutoff = time.Now()
 	}
 
-	// Open trash root for traversal-resistant operations
-	root, err := OpenTrashRoot(trashDir)
-	if err != nil {
-		return fmt.Errorf("open trash root: %w", err)
-	}
-	defer root.Close()
-
 	for _, item := range items {
 		if days == 0 || item.DeletionDate.Before(cutoff) {
-			// Remove file/directory using root (traversal-resistant)
-			if err := root.RemoveAllFiles(item.Name); err != nil {
+			// Validate filename to prevent path traversal
+			if err := validateFileName(item.Name); err != nil {
+				return fmt.Errorf("invalid filename %s: %w", item.Name, err)
+			}
+
+			// Remove file/directory using chmodAndRemoveAll (handles read-only files)
+			// Path is safe: trashDir is validated, item.Name is validated
+			filePath := filepath.Join(trashDir, "files", item.Name)
+			if err := chmodAndRemoveAll(filePath); err != nil {
 				return fmt.Errorf("remove %s: %w", item.Name, err)
 			}
 
-			// Remove trashinfo (ignore error - best effort)
-			root.RemoveInfo(item.Name)
+			// Remove trashinfo
+			infoPath := filepath.Join(trashDir, "info", item.Name+".trashinfo")
+			os.Remove(infoPath) // Best effort
 		}
 	}
 
 	return nil
+}
+
+// chmodAndRemoveAll makes all files writable then removes the directory tree
+func chmodAndRemoveAll(path string) error {
+	// First, make everything writable so we can delete it
+	filepath.Walk(path, func(subPath string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil // Ignore errors, best effort
+		}
+		// Make files and directories writable
+		if info.Mode()&0200 == 0 {
+			os.Chmod(subPath, info.Mode()|0200)
+		}
+		return nil
+	})
+
+	return os.RemoveAll(path)
 }
 
 // Status returns statistics about the trash from all directories
