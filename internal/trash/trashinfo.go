@@ -25,7 +25,8 @@ func ParseTrashInfo(path string) (*TrashInfo, error) {
 	// Limit file size to prevent DoS
 	const maxTrashInfoSize = 8192 // 8KB is more than enough for valid trashinfo
 
-	stat, err := os.Stat(path)
+	// Use Lstat to check symlink size, not target size (consistency with io.LimitReader)
+	stat, err := os.Lstat(path)
 	if err != nil {
 		return nil, fmt.Errorf("stat trashinfo %s: %w", path, err)
 	}

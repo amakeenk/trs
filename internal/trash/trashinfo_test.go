@@ -1,6 +1,7 @@
 package trash
 
 import (
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -139,3 +140,54 @@ func TestFilesPath(t *testing.T) {
 	got := FilesPath("/home/user/.local/share/Trash", "file.txt")
 	assert.Equal(t, "/home/user/.local/share/Trash/files/file.txt", got)
 }
+
+// TestParseTrashInfo_Symlink verifies that ParseTrashInfo uses os.Lstat (not os.Stat)
+// for size check. With os.Stat, a symlink to a large file would fail the size check.
+// With os.Lstat, we check the symlink size itself (tiny), not the target.
+func TestParseTrashInfo_Symlink(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a valid trashinfo file larger than 8192 bytes (the size limit)
+	// We'll create a path that's long enough to exceed the limit
+	longPath := "/home/user/" + strings.Repeat("a", 8200) + ".txt"
+	ti := &TrashInfo{
+		Path:         longPath,
+		DeletionDate: time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC),
+	}
+
+	// Write the large trashinfo file
+	largeInfoPath := tmpDir + "/large.trashinfo"
+	err := ti.Write(largeInfoPath)
+	require.NoError(t, err)
+
+	// Create a symlink to the large file
+	symlinkPath := tmpDir + "/symlink.trashinfo"
+	err = os.Symlink(largeInfoPath, symlinkPath)
+	require.NoError(t, err)
+
+	// With os.Stat (wrong): fails because target file > 8192 bytes
+	// With os.Lstat (correct): passes because symlink itself is tiny
+	//
+	// We expect ParseTrashInfo to proceed past size check (using Lstat)
+	// and then fail on parsing the content (it's valid content, just large)
+	//
+	// Actually: The content IS valid, just the path is very long.
+	// The parser should handle it since io.LimitReader will still read it.
+	// Let's check what happens...
+	got, err := ParseTrashInfo(symlinkPath)
+
+	// The key assertion: we should NOT get an error about file size
+	// If we get "trashinfo file too large", it means os.Stat is being used (wrong)
+	if err != nil && strings.Contains(err.Error(), "file too large") {
+		t.Fatalf("ParseTrashInfo used os.Stat (follows symlinks): %v", err)
+	}
+
+	// With os.Lstat, the symlink itself is small, so we proceed to parsing
+	// The actual parsing should work (content is valid, just has long path)
+	// But wait - the file content is > 8192, so io.LimitReader will truncate it
+	// This means parsing will likely fail due to incomplete content
+	//
+	// The important thing is: we should NOT fail on the initial size check
+	_ = got // May be nil if parsing fails due to truncation, that's OK
+}
+
