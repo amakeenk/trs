@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -54,4 +56,18 @@ func fileCompletion(cmd *cobra.Command, args []string, toComplete string) ([]str
 func exitWithError(msg string, code int) {
 	os.Stderr.WriteString(msg + "\n")
 	os.Exit(code)
+}
+
+// validateCLIInput validates user input from CLI prompts
+// It checks for:
+// - Maximum length (4096 characters)
+// - Null bytes (security risk)
+func validateCLIInput(input string) error {
+	if len(input) > 4096 {
+		return fmt.Errorf("input too long (max 4096 characters)")
+	}
+	if strings.ContainsRune(input, '\x00') {
+		return fmt.Errorf("input contains null byte")
+	}
+	return nil
 }

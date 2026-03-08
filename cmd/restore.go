@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -173,6 +174,12 @@ func restoreInteractiveSimple(mgr *trash.Manager, items []trash.TrashItem) {
 
 	if input == "" {
 		fmt.Println("Cancelled")
+		return
+	}
+
+	// Validate input for security
+	if err := validateCLIInput(input); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return
 	}
 

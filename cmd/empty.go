@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 
 	"altlinux.space/amakeenk/trs/internal/trash"
@@ -73,12 +74,18 @@ func runEmpty(cmd *cobra.Command, args []string) {
 
 		var response string
 		fmt.Scanln(&response)
+
+		// Validate input for security
+		if err := validateCLIInput(response); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			return
+		}
+
 		if response != "y" && response != "Y" {
 			fmt.Println("Cancelled")
 			return
 		}
 	}
-
 	// Perform empty
 	if flagDays > 0 {
 		err = mgr.EmptyOlderThan(flagDays)

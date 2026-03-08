@@ -2856,3 +2856,80 @@ func TestRestoreSpecificManagerError(t *testing.T) {
 		t.Fatalf("expected exit error, got: %v", err)
 	}
 }
+
+// TestValidateCLIInput tests the validateCLIInput function
+func TestValidateCLIInput(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name:    "valid short input",
+			input:   "1",
+			wantErr: false,
+		},
+		{
+			name:    "valid name input",
+			input:   "file.txt",
+			wantErr: false,
+		},
+		{
+			name:    "empty input",
+			input:   "",
+			wantErr: false,
+		},
+		{
+			name:    "valid y confirmation",
+			input:   "y",
+			wantErr: false,
+		},
+		{
+			name:    "valid N confirmation",
+			input:   "N",
+			wantErr: false,
+		},
+		{
+			name:    "input at max length",
+			input:   strings.Repeat("a", 4096),
+			wantErr: false,
+		},
+		{
+			name:    "input over max length",
+			input:   strings.Repeat("a", 4097),
+			wantErr: true,
+			errMsg:  "input too long",
+		},
+		{
+			name:    "input with null byte",
+			input:   "test\x00file",
+			wantErr: true,
+			errMsg:  "null byte",
+		},
+		{
+			name:    "only null byte",
+			input:   "\x00",
+			wantErr: true,
+			errMsg:  "null byte",
+		},
+		{
+			name:    "input with null at end",
+			input:   "valid\x00",
+			wantErr: true,
+			errMsg:  "null byte",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateCLIInput(tt.input)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errMsg)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
