@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-03-08
+
+### Fixed
+- Handle read-only files and symlinks in empty command
+- Add input validation to CLI prompts
+
+### Security
+- Use os.Root for traversal-resistant trash operations (prevents symlink attacks)
+
+
+
 ## [0.4.2] - 2026-03-07
 
 ### Added
@@ -91,7 +102,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - github.com/spf13/cobra - CLI framework
 - github.com/stretchr/testify - Testing assertions
 
-[Unreleased]: https://altlinux.space/amakeenk/trs/compare/v0.4.2...HEAD
+[Unreleased]: https://altlinux.space/amakeenk/trs/compare/v0.5.0...HEAD
+[0.5.0]: https://altlinux.space/amakeenk/trs/compare/v0.4.2...v0.5.0
 [0.4.2]: https://altlinux.space/amakeenk/trs/compare/v0.4.1...v0.4.2
 [0.4.1]: https://altlinux.space/amakeenk/trs/compare/v0.4.0...v0.4.1
 [0.4.0]: https://altlinux.space/amakeenk/trs/compare/v0.3.0...v0.4.0
