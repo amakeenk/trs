@@ -179,8 +179,8 @@ func (m *Manager) copyDirAndDelete(src, dst string) error {
 		return err
 	}
 
-	// Delete original directory
-	return os.RemoveAll(src)
+	// Delete original directory (use safeRemoveAll to prevent symlink attacks)
+	return safeRemoveAll(src)
 }
 
 // copyFile copies a single file preserving permissions
