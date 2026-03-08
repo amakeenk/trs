@@ -5,8 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Unreleased]: https://altlinux.space/amakeenk/trs/compare/v0.4.3...HEAD
 
+## [0.4.3] - 2026-03-08
+
+### Fixed
+- Handle read-only files (e.g., Go modules) in `trs empty` with chmod before removal
+- Remove unnecessary symlink rejection in RemoveAllFiles - symlinks are safe via os.Root
+
+### Changed
+- Use os.Root for traversal-resistant trash operations in EmptyDirOlderThan
+- Add input validation to CLI prompts (null byte check, length limit)
+
+### Security
+- Use os.Lstat in ParseTrashInfo to prevent symlink size check bypass
+- Use safeRemoveAll in copyDirAndDelete to prevent symlink attacks during restore
+
+### Tests
+- Add comprehensive tests for TrashRoot (OpenTrashRoot, ParseTrashInfoFromRoot, removeAll)
+- Add security regression test suite
+- Coverage improved: 82.8% → 86.1%
 ## [0.4.2] - 2026-03-07
 
 ### Added
@@ -91,7 +109,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - github.com/spf13/cobra - CLI framework
 - github.com/stretchr/testify - Testing assertions
 
-[Unreleased]: https://altlinux.space/amakeenk/trs/compare/v0.4.2...HEAD
+[Unreleased]: https://altlinux.space/amakeenk/trs/compare/v0.4.3...HEAD
+[0.4.3]: https://altlinux.space/amakeenk/trs/compare/v0.4.2...v0.4.3
+[0.4.2]: https://altlinux.space/amakeenk/trs/compare/v0.4.1...v0.4.2
+[0.4.1]: https://altlinux.space/amakeenk/trs/compare/v0.4.0...v0.4.1
+[0.4.0]: https://altlinux.space/amakeenk/trs/compare/v0.3.0...v0.4.0
+[0.3.0]: https://altlinux.space/amakeenk/trs/compare/v0.2.0...v0.3.0
+[0.2.0]: https://altlinux.space/amakeenk/trs/compare/v0.1.0...v0.2.0
+[0.1.0]: https://altlinux.space/amakeenk/trs/releases/tag/v0.1.0
 [0.4.2]: https://altlinux.space/amakeenk/trs/compare/v0.4.1...v0.4.2
 [0.4.1]: https://altlinux.space/amakeenk/trs/compare/v0.4.0...v0.4.1
 [0.4.0]: https://altlinux.space/amakeenk/trs/compare/v0.3.0...v0.4.0
