@@ -225,16 +225,21 @@ func copyFile(src, dst string) (err error) {
 
 // resolveNameConflict adds suffix _1, _2, etc. if name already exists in trash
 func (m *Manager) resolveNameConflict(trashDir, name string) (string, error) {
+	// Open trash root for traversal-resistant operations
+	root, err := OpenTrashRoot(trashDir)
+	if err != nil {
+		return "", fmt.Errorf("open trash root: %w", err)
+	}
+	defer root.Close()
+
 	trashName := name
 	counter := 0
 	maxIterations := 10000 // Prevent DoS via infinite loop
 
 	for {
-		filesPath := FilesPath(trashDir, trashName)
-		infoPath := TrashInfoPath(trashDir, trashName)
-
-		_, filesErr := os.Stat(filesPath)
-		_, infoErr := os.Stat(infoPath)
+		// Use TrashRoot - traversal-resistant via os.Root
+		_, filesErr := root.LstatFiles(trashName)
+		_, infoErr := root.LstatInfo(trashName)
 
 		if os.IsNotExist(filesErr) && os.IsNotExist(infoErr) {
 			return trashName, nil
@@ -276,9 +281,18 @@ func (m *Manager) List() ([]TrashItem, error) {
 
 // ListFromDir returns items from a specific trash directory
 func (m *Manager) ListFromDir(trashDir string) ([]TrashItem, error) {
-	filesDir := filepath.Join(trashDir, "files")
+	// Check if trash directory exists first (for graceful handling of non-existent dirs)
+	if _, err := os.Stat(trashDir); os.IsNotExist(err) {
+		return nil, nil
+	}
 
-	entries, err := os.ReadDir(filesDir)
+	// Open trash root for traversal-resistant operations
+	root, err := OpenTrashRoot(trashDir)
+	if err != nil {
+		return nil, fmt.Errorf("open trash root: %w", err)
+	}
+
+	entries, err := root.ReadDirFiles()
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
@@ -512,17 +526,22 @@ func (m *Manager) EmptyDirOlderThan(trashDir string, days int) error {
 		cutoff = time.Now()
 	}
 
+	// Open trash root for traversal-resistant operations
+	root, err := OpenTrashRoot(trashDir)
+	if err != nil {
+		return fmt.Errorf("open trash root: %w", err)
+	}
+	defer root.Close()
+
 	for _, item := range items {
 		if days == 0 || item.DeletionDate.Before(cutoff) {
-			// Delete file
-			filesPath := FilesPath(trashDir, item.Name)
-			if err := os.RemoveAll(filesPath); err != nil {
+			// Remove file/directory using root (traversal-resistant)
+			if err := root.RemoveAllFiles(item.Name); err != nil {
 				return fmt.Errorf("remove %s: %w", item.Name, err)
 			}
 
-			// Delete trashinfo
-			infoPath := TrashInfoPath(trashDir, item.Name)
-			os.Remove(infoPath)
+			// Remove trashinfo (ignore error - best effort)
+			root.RemoveInfo(item.Name)
 		}
 	}
 

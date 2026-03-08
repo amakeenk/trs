@@ -43,6 +43,28 @@ func ParseTrashInfo(path string) (*TrashInfo, error) {
 	return parseTrashInfoReader(io.LimitReader(f, maxTrashInfoSize))
 }
 
+// ParseTrashInfoFromRoot reads and parses a .trashinfo file using TrashRoot.
+// This is traversal-resistant - the file must be within the trash root.
+func ParseTrashInfoFromRoot(root *TrashRoot, name string) (*TrashInfo, error) {
+	const maxTrashInfoSize = 8192
+
+	stat, err := root.LstatInfo(name)
+	if err != nil {
+		return nil, fmt.Errorf("stat trashinfo %s: %w", name, err)
+	}
+	if stat.Size() > maxTrashInfoSize {
+		return nil, fmt.Errorf("trashinfo file too large: %d bytes (max %d)", stat.Size(), maxTrashInfoSize)
+	}
+
+	f, err := root.OpenInfo(name)
+	if err != nil {
+		return nil, fmt.Errorf("open trashinfo %s: %w", name, err)
+	}
+	defer f.Close()
+
+	return parseTrashInfoReader(io.LimitReader(f, maxTrashInfoSize))
+}
+
 func parseTrashInfoReader(r io.Reader) (*TrashInfo, error) {
 	info := &TrashInfo{}
 	scanner := bufio.NewScanner(r)
