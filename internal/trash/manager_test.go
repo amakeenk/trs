@@ -535,9 +535,6 @@ func TestCopyDirAndDelete(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "file1.txt"), []byte("content1"), 0644))
 	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "sub", "file2.txt"), []byte("content2"), 0644))
 
-	// Create symlink
-	require.NoError(t, os.Symlink(filepath.Join(srcDir, "file1.txt"), filepath.Join(srcDir, "link.txt")))
-
 	dstDir := filepath.Join(tmpDir, "destdir")
 
 	mgr, err := NewManager()
@@ -553,11 +550,47 @@ func TestCopyDirAndDelete(t *testing.T) {
 	// Verify content at destination
 	assert.FileExists(t, filepath.Join(dstDir, "file1.txt"))
 	assert.FileExists(t, filepath.Join(dstDir, "sub", "file2.txt"))
+}
 
-	// Verify symlink preserved
-	linkInfo, err := os.Lstat(filepath.Join(dstDir, "link.txt"))
+// TestCopyDirAndDeleteWithSymlinkInSubdirectory tests that copyDirAndDelete fails safely
+// when the source directory contains a symlink in a subdirectory.
+// This is a security test: os.RemoveAll would follow the symlink and delete target contents.
+func TestCopyDirAndDeleteWithSymlinkInSubdirectory(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create target directory with sensitive data (outside source)
+	targetDir := filepath.Join(tmpDir, "sensitive")
+	require.NoError(t, os.MkdirAll(targetDir, 0755))
+	sensitiveFile := filepath.Join(targetDir, "important.txt")
+	require.NoError(t, os.WriteFile(sensitiveFile, []byte("DO NOT DELETE"), 0644))
+
+	// Create source directory with subdirectory
+	srcDir := filepath.Join(tmpDir, "sourcedir")
+	subDir := filepath.Join(srcDir, "sub")
+	require.NoError(t, os.MkdirAll(subDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "file.txt"), []byte("content"), 0644))
+
+	// Create symlink INSIDE the subdirectory pointing to sensitive data
+	symlinkPath := filepath.Join(subDir, "link")
+	require.NoError(t, os.Symlink(targetDir, symlinkPath))
+
+	dstDir := filepath.Join(tmpDir, "destdir")
+
+	mgr, err := NewManager()
 	require.NoError(t, err)
-	assert.True(t, linkInfo.Mode()&os.ModeSymlink != 0)
+
+	// copyDirAndDelete should FAIL because safeRemoveAll rejects directories with symlinks inside
+	err = mgr.copyDirAndDelete(srcDir, dstDir)
+	require.Error(t, err, "copyDirAndDelete should fail when source directory contains symlink in subdirectory")
+	assert.Contains(t, err.Error(), "symlink", "error should mention symlink")
+
+	// CRITICAL: Verify sensitive data was NOT deleted
+	_, err = os.Stat(sensitiveFile)
+	require.NoError(t, err, "sensitive file should NOT be deleted")
+
+	content, err := os.ReadFile(sensitiveFile)
+	require.NoError(t, err)
+	assert.Equal(t, "DO NOT DELETE", string(content), "sensitive file content should be preserved")
 }
 
 func TestManager_StatusWithDirectory(t *testing.T) {
