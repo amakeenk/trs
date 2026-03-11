@@ -12,23 +12,16 @@
 
 ## Installation
 
-### From Source
+### ALT Linux Sisyphus
+
+```bash
+# apt-get install trs
+```
+
+### Go Install
 
 ```bash
 go install altlinux.space/amakeenk/trs@latest
-```
-
-### From Binary
-
-Download from [Releases](https://altlinux.space/amakeenk/trs/releases).
-
-### Build from Source
-
-```bash
-git clone https://altlinux.space/amakeenk/trs.git
-cd trs
-make build
-sudo make install
 ```
 
 ## Usage
@@ -64,6 +57,7 @@ trs restore              # Interactive TUI with fuzzy search
 trs restore config.json  # Restore by name
 trs restore 1            # Restore by index (from list)
 trs restore --last       # Restore most recently trashed file
+trs restore -f file.txt  # Force overwrite existing file
 trs restore --json       # JSON output
 ```
 
@@ -79,19 +73,20 @@ trs empty --json         # JSON output
 
 ```bash
 trs status               # Show trash statistics
-trs status -v            # Verbose (per-volume breakdown)
+trs status -v            # Verbose (oldest/newest/largest files)
 trs status --json        # JSON output
 ```
 
 Output:
 ```
-Trash Status:
-  Files:     42
-  Directories: 3
-  Total size: 128.5 MB
+Trash: 42 files, 128.5 MB
+```
 
-Locations:
-  /home/user/.local/share/Trash
+With `-v`:
+```
+Trash: 42 files, 128.5 MB
+Oldest: 2026-02-01 10:00  Newest: 2026-03-10 15:30
+Largest: backup.tar (50MB), video.mp4 (25MB), data.zip (10MB)
 ```
 
 ### Version
@@ -99,6 +94,15 @@ Locations:
 ```bash
 trs version
 trs version --json
+```
+
+### Shell completion
+
+```bash
+trs completion bash      # Bash
+trs completion zsh       # Zsh
+trs completion fish      # Fish
+trs completion powershell # PowerShell
 ```
 
 ## Features
@@ -193,3 +197,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
+
+## Note
+
+This project was entirely implemented with AI assistance.

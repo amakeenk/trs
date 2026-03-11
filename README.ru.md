@@ -1,6 +1,6 @@
 # trs
 
-**trs** (от **TR**a**S**h — мусор) — безопасная CLI-утилита для перемещения файлов в корзину по спецификации XDG Trash.
+**trs** (от **TR**a**S**h) — безопасная CLI-утилита для перемещения файлов в корзину по спецификации XDG Trash.
 
 ## Почему trs?
 
@@ -12,23 +12,16 @@
 
 ## Установка
 
-### Из исходников
+### ALT Linux Sisyphus
+
+```bash
+# apt-get install trs
+```
+
+### Go Install
 
 ```bash
 go install altlinux.space/amakeenk/trs@latest
-```
-
-### Готовый бинарник
-
-Скачайте со страницы [Releases](https://altlinux.space/amakeenk/trs/releases).
-
-### Сборка из исходников
-
-```bash
-git clone https://altlinux.space/amakeenk/trs.git
-cd trs
-make build
-sudo make install
 ```
 
 ## Использование
@@ -64,6 +57,7 @@ trs restore              # Интерактивный TUI с нечётким п
 trs restore config.json  # Восстановить по имени
 trs restore 1            # Восстановить по индексу (из списка)
 trs restore --last       # Восстановить последний удалённый файл
+trs restore -f file.txt  # Перезаписать существующий файл
 trs restore --json       # Вывод в формате JSON
 ```
 
@@ -79,19 +73,20 @@ trs empty --json         # Вывод в формате JSON
 
 ```bash
 trs status               # Показать статистику корзины
-trs status -v            # Подробно (разбивка по томам)
+trs status -v            # Подробно (старейший/новейший/крупнейшие файлы)
 trs status --json        # Вывод в формате JSON
 ```
 
 Вывод:
 ```
-Trash Status:
-  Files:     42
-  Directories: 3
-  Total size: 128.5 MB
+Trash: 42 files, 128.5 MB
+```
 
-Locations:
-  /home/user/.local/share/Trash
+С флагом `-v`:
+```
+Trash: 42 files, 128.5 MB
+Oldest: 2026-02-01 10:00  Newest: 2026-03-10 15:30
+Largest: backup.tar (50MB), video.mp4 (25MB), data.zip (10MB)
 ```
 
 ### Версия
@@ -99,6 +94,15 @@ Locations:
 ```bash
 trs version
 trs version --json
+```
+
+### Автодополнение в оболочке
+
+```bash
+trs completion bash      # Bash
+trs completion zsh       # Zsh
+trs completion fish      # Fish
+trs completion powershell # PowerShell
 ```
 
 ## Возможности
@@ -193,3 +197,7 @@ MIT License — подробности в файле [LICENSE](LICENSE).
 ## Журнал изменений
 
 См. [CHANGELOG.md](CHANGELOG.md) для истории версий.
+
+## Примечание
+
+Этот проект полностью реализован с помощью ИИ.
