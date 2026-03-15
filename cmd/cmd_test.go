@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -2930,4 +2931,146 @@ func TestValidateCLIInput(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRestoreMultiple(t *testing.T) {
+	setupTestEnv(t)
+
+	mgr, err := trash.NewManager()
+	require.NoError(t, err)
+
+	tmpDir := t.TempDir()
+
+	file1 := filepath.Join(tmpDir, "file1.txt")
+	file2 := filepath.Join(tmpDir, "file2.txt")
+	require.NoError(t, os.WriteFile(file1, []byte("content1"), 0644))
+	require.NoError(t, os.WriteFile(file2, []byte("content2"), 0644))
+	require.NoError(t, mgr.Move(file1))
+	require.NoError(t, mgr.Move(file2))
+
+	items, err := mgr.List()
+	require.NoError(t, err)
+	require.Len(t, items, 2)
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	restoreMultiple(mgr, items, false)
+
+	os.Stdout = oldStdout
+	w.Close()
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	r.Close()
+	output := buf.String()
+
+	assert.Contains(t, output, "Restored: file1.txt")
+	assert.Contains(t, output, "Restored: file2.txt")
+	assert.Contains(t, output, "Restored 2 files")
+
+	_, err = os.Stat(file1)
+	require.NoError(t, err)
+	_, err = os.Stat(file2)
+	require.NoError(t, err)
+}
+
+func TestRestoreMultipleWithErrors(t *testing.T) {
+	setupTestEnv(t)
+
+	mgr, err := trash.NewManager()
+	require.NoError(t, err)
+
+	items := []trash.TrashItem{
+		{Name: "nonexistent1.txt", OriginalPath: "/tmp/nonexistent1.txt"},
+		{Name: "nonexistent2.txt", OriginalPath: "/tmp/nonexistent2.txt"},
+	}
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	restoreMultiple(mgr, items, false)
+
+	os.Stdout = oldStdout
+	w.Close()
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	r.Close()
+	output := buf.String()
+
+	assert.Contains(t, output, "Error restoring nonexistent1.txt")
+	assert.Contains(t, output, "Error restoring nonexistent2.txt")
+}
+
+func TestRestoreMultipleJSON(t *testing.T) {
+	setupTestEnv(t)
+
+	mgr, err := trash.NewManager()
+	require.NoError(t, err)
+
+	tmpDir := t.TempDir()
+
+	file1 := filepath.Join(tmpDir, "jsonfile1.txt")
+	file2 := filepath.Join(tmpDir, "jsonfile2.txt")
+	require.NoError(t, os.WriteFile(file1, []byte("content1"), 0644))
+	require.NoError(t, os.WriteFile(file2, []byte("content2"), 0644))
+	require.NoError(t, mgr.Move(file1))
+	require.NoError(t, mgr.Move(file2))
+
+	items, err := mgr.List()
+	require.NoError(t, err)
+	require.Len(t, items, 2)
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	restoreMultipleJSON(mgr, items, false)
+
+	os.Stdout = oldStdout
+	w.Close()
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	r.Close()
+	output := buf.String()
+
+	var results []RestoreResult
+	require.NoError(t, json.Unmarshal([]byte(output), &results))
+	require.Len(t, results, 2)
+	assert.Empty(t, results[0].Error)
+	assert.Empty(t, results[1].Error)
+}
+
+func TestRestoreMultipleJSONWithErrors(t *testing.T) {
+	setupTestEnv(t)
+
+	mgr, err := trash.NewManager()
+	require.NoError(t, err)
+
+	items := []trash.TrashItem{
+		{Name: "missing.txt", OriginalPath: "/tmp/missing.txt"},
+	}
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	restoreMultipleJSON(mgr, items, false)
+
+	os.Stdout = oldStdout
+	w.Close()
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	r.Close()
+	output := buf.String()
+
+	var results []RestoreResult
+	require.NoError(t, json.Unmarshal([]byte(output), &results))
+	require.Len(t, results, 1)
+	assert.NotEmpty(t, results[0].Error)
 }

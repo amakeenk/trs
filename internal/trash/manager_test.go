@@ -614,5 +614,135 @@ func TestManager_StatusWithDirectory(t *testing.T) {
 	count, size, err := mgr.Status()
 	require.NoError(t, err)
 	assert.Equal(t, 1, count)
-	assert.Equal(t, int64(10), size) // "hello" + "world" = 10 bytes
+	assert.Equal(t, int64(10), size)
+}
+
+func TestSetVerboseCallback(t *testing.T) {
+	mgr, err := NewManager()
+	require.NoError(t, err)
+
+	var calls []struct {
+		path string
+		typ  ItemType
+	}
+
+	mgr.SetVerboseCallback(func(path string, itemType ItemType) {
+		calls = append(calls, struct {
+			path string
+			typ  ItemType
+		}{path: path, typ: itemType})
+	})
+
+	tmpDir := t.TempDir()
+	srcFile := filepath.Join(tmpDir, "verbose_test.txt")
+	dstFile := filepath.Join(tmpDir, "dest.txt")
+	require.NoError(t, os.WriteFile(srcFile, []byte("content"), 0644))
+
+	err = mgr.copyAndDeleteVerbose(srcFile, dstFile, nil)
+	require.NoError(t, err)
+
+	require.Len(t, calls, 1)
+	assert.Contains(t, calls[0].path, "verbose_test.txt")
+	assert.Equal(t, ItemTypeFile, calls[0].typ)
+}
+
+func TestCopyAndDeleteVerboseWithDir(t *testing.T) {
+	mgr, err := NewManager()
+	require.NoError(t, err)
+
+	var calls []struct {
+		path string
+		typ  ItemType
+	}
+
+	mgr.SetVerboseCallback(func(path string, itemType ItemType) {
+		calls = append(calls, struct {
+			path string
+			typ  ItemType
+		}{path: path, typ: itemType})
+	})
+
+	tmpDir := t.TempDir()
+	srcDir := filepath.Join(tmpDir, "srcdir")
+	dstDir := filepath.Join(tmpDir, "dstdir")
+	require.NoError(t, os.MkdirAll(srcDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "file.txt"), []byte("content"), 0644))
+
+	err = mgr.copyAndDeleteVerbose(srcDir, dstDir, nil)
+	require.NoError(t, err)
+
+	assert.GreaterOrEqual(t, len(calls), 1)
+	assert.Equal(t, ItemTypeDirectory, calls[0].typ)
+}
+
+func TestCopyAndDeleteVerboseWithNilCallback(t *testing.T) {
+	mgr, err := NewManager()
+	require.NoError(t, err)
+
+	tmpDir := t.TempDir()
+	srcFile := filepath.Join(tmpDir, "no_callback.txt")
+	dstFile := filepath.Join(tmpDir, "dest.txt")
+	require.NoError(t, os.WriteFile(srcFile, []byte("content"), 0644))
+
+	err = mgr.copyAndDeleteVerbose(srcFile, dstFile, nil)
+	require.NoError(t, err)
+
+	assert.FileExists(t, dstFile)
+	_, err = os.Stat(srcFile)
+	assert.True(t, os.IsNotExist(err))
+}
+
+func TestCopyDirAndDeleteVerbose(t *testing.T) {
+	mgr, err := NewManager()
+	require.NoError(t, err)
+
+	var calls []struct {
+		path string
+		typ  ItemType
+	}
+
+	mgr.SetVerboseCallback(func(path string, itemType ItemType) {
+		calls = append(calls, struct {
+			path string
+			typ  ItemType
+		}{path: path, typ: itemType})
+	})
+
+	tmpDir := t.TempDir()
+	srcDir := filepath.Join(tmpDir, "srcdir")
+	dstDir := filepath.Join(tmpDir, "dstdir")
+
+	require.NoError(t, os.MkdirAll(filepath.Join(srcDir, "sub"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "file1.txt"), []byte("content1"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "sub", "file2.txt"), []byte("content2"), 0644))
+
+	err = mgr.copyDirAndDeleteVerbose(srcDir, dstDir)
+	require.NoError(t, err)
+
+	assert.GreaterOrEqual(t, len(calls), 3)
+	assert.Equal(t, ItemTypeDirectory, calls[0].typ)
+
+	assert.FileExists(t, filepath.Join(dstDir, "file1.txt"))
+	assert.FileExists(t, filepath.Join(dstDir, "sub", "file2.txt"))
+	_, err = os.Stat(srcDir)
+	assert.True(t, os.IsNotExist(err))
+}
+
+func TestCopyDirAndDeleteVerboseWithNilCallback(t *testing.T) {
+	mgr, err := NewManager()
+	require.NoError(t, err)
+
+	tmpDir := t.TempDir()
+	srcDir := filepath.Join(tmpDir, "srcdir_nil")
+	dstDir := filepath.Join(tmpDir, "dstdir_nil")
+
+	require.NoError(t, os.MkdirAll(srcDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "file.txt"), []byte("content"), 0644))
+
+	err = mgr.copyDirAndDeleteVerbose(srcDir, dstDir)
+	require.NoError(t, err)
+
+	assert.FileExists(t, filepath.Join(dstDir, "file.txt"))
+	_, err = os.Stat(srcDir)
+	assert.True(t, os.IsNotExist(err))
 }
