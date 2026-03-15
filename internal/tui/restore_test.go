@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"altlinux.space/amakeenk/trs/internal/trash"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 func TestNewRestoreModel(t *testing.T) {
@@ -310,9 +310,135 @@ func TestRestoreModelUpdate(t *testing.T) {
 		{Name: "file3.txt", OriginalPath: "/path/to/file3.txt", DeletionDate: time.Now(), Size: 300, IsDir: false},
 	}
 
-	t.Run("Ctrl+C cancels", func(t *testing.T) {
+	t.Run("/ enters search mode", func(t *testing.T) {
 		model := NewRestoreModel(items, false)
-		updatedModel, cmd := model.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+		assert.Equal(t, modeSelect, model.mode)
+
+		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+		m := updatedModel.(RestoreModel)
+		assert.Equal(t, modeSearch, m.mode)
+		assert.True(t, m.search.Focused())
+	})
+
+	t.Run("Space toggles selection", func(t *testing.T) {
+		model := NewRestoreModel(items, false)
+		assert.Equal(t, modeSelect, model.mode)
+		key := itemKey(items[0])
+		assert.False(t, model.selectedItems[key])
+
+		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeySpace})
+		m := updatedModel.(RestoreModel)
+		assert.Equal(t, modeSelect, m.mode)
+		assert.True(t, m.selectedItems[key])
+	})
+
+	t.Run("Space deselects item", func(t *testing.T) {
+		model := NewRestoreModel(items, false)
+		key := itemKey(items[0])
+		model.selectedItems[key] = true
+
+		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeySpace})
+		m := updatedModel.(RestoreModel)
+		assert.False(t, m.selectedItems[key])
+	})
+
+	t.Run("Space selects multiple items", func(t *testing.T) {
+		model := NewRestoreModel(items, false)
+		key0 := itemKey(items[0])
+		model.selectedItems[key0] = true
+		model.selected = 1
+
+		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeySpace})
+		m := updatedModel.(RestoreModel)
+		key1 := itemKey(items[1])
+		assert.True(t, m.selectedItems[key0])
+		assert.True(t, m.selectedItems[key1])
+	})
+
+	t.Run("SelectedItems returns selected", func(t *testing.T) {
+		model := NewRestoreModel(items, false)
+		model.selectedItems[itemKey(items[0])] = true
+		model.selectedItems[itemKey(items[1])] = true
+
+		selectedItems := model.SelectedItems()
+		require.Len(t, selectedItems, 2)
+		assert.Equal(t, "file1.txt", selectedItems[0].Name)
+		assert.Equal(t, "file2.txt", selectedItems[1].Name)
+	})
+
+	t.Run("SelectedItems returns single item when nothing selected", func(t *testing.T) {
+		model := NewRestoreModel(items, false)
+		model.selected = 1
+
+		items := model.SelectedItems()
+		require.Len(t, items, 1)
+		assert.Equal(t, "file2.txt", items[0].Name)
+	})
+
+	t.Run("SelectedItems preserves selection across filter", func(t *testing.T) {
+		model := NewRestoreModel(items, false)
+		model.selectedItems[itemKey(items[0])] = true
+		model.selectedItems[itemKey(items[2])] = true
+
+		model.mode = modeSearch
+		model.search.Focus()
+		model.search.SetValue("file1")
+		model.filterItems()
+
+		require.Len(t, model.filtered, 1)
+
+		selected := model.SelectedItems()
+		require.Len(t, selected, 2)
+		names := []string{selected[0].Name, selected[1].Name}
+		assert.Contains(t, names, "file1.txt")
+		assert.Contains(t, names, "file3.txt")
+	})
+
+	t.Run("Search input in search mode", func(t *testing.T) {
+		model := NewRestoreModel(items, false)
+		model.mode = modeSearch
+		model.search.Focus()
+
+		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'f'}})
+		m := updatedModel.(RestoreModel)
+		assert.Equal(t, "f", m.search.Value())
+		assert.Len(t, m.filtered, 3)
+	})
+
+	t.Run("Backspace in search mode", func(t *testing.T) {
+		model := NewRestoreModel(items, false)
+		model.mode = modeSearch
+		model.search.Focus()
+		model.search.SetValue("test")
+
+		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+		m := updatedModel.(RestoreModel)
+		assert.Equal(t, "tes", m.search.Value())
+	})
+
+	t.Run("Backspace in search mode", func(t *testing.T) {
+		model := NewRestoreModel(items, false)
+		model.mode = modeSearch
+		model.search.Focus()
+		model.search.SetValue("test")
+
+		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+		m := updatedModel.(RestoreModel)
+		assert.Equal(t, "tes", m.search.Value())
+	})
+
+	t.Run("Non-key message returns unchanged", func(t *testing.T) {
+		model := NewRestoreModel(items, false)
+		updatedModel, cmd := model.Update(nil)
+
+		m := updatedModel.(RestoreModel)
+		assert.Equal(t, model, m)
+		assert.Nil(t, cmd)
+	})
+
+	t.Run("Esc cancels in select mode", func(t *testing.T) {
+		model := NewRestoreModel(items, false)
+		updatedModel, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEsc})
 
 		m := updatedModel.(RestoreModel)
 		assert.True(t, m.Cancelled())
@@ -406,6 +532,8 @@ func TestRestoreModelUpdate(t *testing.T) {
 
 	t.Run("Search input character", func(t *testing.T) {
 		model := NewRestoreModel(items, false)
+		model.mode = modeSearch
+		model.search.Focus()
 
 		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'f'}})
 		m := updatedModel.(RestoreModel)
@@ -415,6 +543,8 @@ func TestRestoreModelUpdate(t *testing.T) {
 
 	t.Run("Search input filters items", func(t *testing.T) {
 		model := NewRestoreModel(items, false)
+		model.mode = modeSearch
+		model.search.Focus()
 
 		// Type "file1"
 		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'f'}})
@@ -431,6 +561,8 @@ func TestRestoreModelUpdate(t *testing.T) {
 
 	t.Run("Backspace removes character", func(t *testing.T) {
 		model := NewRestoreModel(items, false)
+		model.mode = modeSearch
+		model.search.Focus()
 		model.search.SetValue("test")
 
 		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyBackspace})
@@ -440,6 +572,8 @@ func TestRestoreModelUpdate(t *testing.T) {
 
 	t.Run("Delete key triggers update", func(t *testing.T) {
 		model := NewRestoreModel(items, false)
+		model.mode = modeSearch
+		model.search.Focus()
 		model.search.SetValue("test")
 
 		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyDelete})
@@ -450,6 +584,8 @@ func TestRestoreModelUpdate(t *testing.T) {
 
 	t.Run("Selection resets when filtered list shrinks", func(t *testing.T) {
 		model := NewRestoreModel(items, false)
+		model.mode = modeSearch
+		model.search.Focus()
 		model.selected = 2 // Select last item
 
 		// Search for "file1" which filters to 1 item
@@ -465,6 +601,8 @@ func TestRestoreModelUpdate(t *testing.T) {
 
 	t.Run("Selection adjusts when filtering", func(t *testing.T) {
 		model := NewRestoreModel(items, false)
+		model.mode = modeSearch
+		model.search.Focus()
 		model.selected = 2
 
 		// Search for "file" which filters to all 3 items

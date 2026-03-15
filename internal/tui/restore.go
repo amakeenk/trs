@@ -11,15 +11,24 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+type mode int
+
+const (
+	modeSelect mode = iota
+	modeSearch
+)
+
 // RestoreModel is the TUI model for restore selection
 type RestoreModel struct {
-	items     []trash.TrashItem
-	filtered  []trash.TrashItem
-	selected  int
-	search    textinput.Model
-	confirmed bool
-	cancelled bool
-	force     bool
+	items         []trash.TrashItem
+	filtered      []trash.TrashItem
+	selected      int
+	selectedItems map[string]bool
+	search        textinput.Model
+	mode          mode
+	confirmed     bool
+	cancelled     bool
+	force         bool
 }
 
 var (
@@ -50,22 +59,30 @@ var (
 
 	dirStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("81"))
+
+	checkedStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("82"))
 )
+
+func itemKey(item trash.TrashItem) string {
+	return item.Name + "|" + item.OriginalPath
+}
 
 // NewRestoreModel creates a new restore TUI model
 func NewRestoreModel(items []trash.TrashItem, force bool) RestoreModel {
 	ti := textinput.New()
 	ti.Placeholder = "Search..."
-	ti.Focus()
 	ti.CharLimit = 100
 	ti.Width = 50
 
 	return RestoreModel{
-		items:    items,
-		filtered: items,
-		search:   ti,
-		selected: 0,
-		force:    force,
+		items:         items,
+		filtered:      items,
+		search:        ti,
+		selected:      0,
+		selectedItems: make(map[string]bool),
+		mode:          modeSelect,
+		force:         force,
 	}
 }
 
@@ -76,38 +93,108 @@ func (m RestoreModel) Init() tea.Cmd {
 func (m RestoreModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyCtrlC, tea.KeyEsc:
-			m.cancelled = true
+		switch m.mode {
+		case modeSearch:
+			return m.updateSearchMode(msg)
+		case modeSelect:
+			return m.updateSelectMode(msg)
+		}
+	}
+
+	return m, nil
+}
+
+func (m RestoreModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.Type {
+	case tea.KeyEsc:
+		if m.search.Value() != "" {
+			m.search.SetValue("")
+			m.filtered = m.items
+			m.selected = 0
+			return m, nil
+		}
+		m.mode = modeSelect
+		m.search.Blur()
+		return m, nil
+
+	case tea.KeyEnter:
+		if len(m.filtered) > 0 {
+			m.confirmed = true
 			return m, tea.Quit
+		}
+		return m, nil
 
-		case tea.KeyEnter:
-			if len(m.filtered) > 0 {
-				m.confirmed = true
-				return m, tea.Quit
-			}
+	case tea.KeySpace:
+		if m.search.Value() == "" && len(m.filtered) > 0 && m.selected < len(m.filtered) {
+			key := itemKey(m.filtered[m.selected])
+			m.selectedItems[key] = !m.selectedItems[key]
+		}
+		return m, nil
 
-		case tea.KeyUp, tea.KeyCtrlP:
-			if m.selected > 0 {
-				m.selected--
-			}
+	case tea.KeyTab:
+		if len(m.filtered) > 0 && m.selected < len(m.filtered) {
+			key := itemKey(m.filtered[m.selected])
+			m.selectedItems[key] = !m.selectedItems[key]
+		}
+		return m, nil
 
-		case tea.KeyDown, tea.KeyCtrlN:
-			if m.selected < len(m.filtered)-1 {
-				m.selected++
-			}
+	case tea.KeyUp, tea.KeyCtrlP:
+		if m.selected > 0 {
+			m.selected--
+		}
+		return m, nil
+
+	case tea.KeyDown, tea.KeyCtrlN:
+		if m.selected < len(m.filtered)-1 {
+			m.selected++
+		}
+		return m, nil
+	}
+
+	var cmd tea.Cmd
+	m.search, cmd = m.search.Update(msg)
+	m.filterItems()
+	if m.selected >= len(m.filtered) {
+		m.selected = max(0, len(m.filtered)-1)
+	}
+	return m, cmd
+}
+
+func (m RestoreModel) updateSelectMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.Type {
+	case tea.KeyCtrlC, tea.KeyEsc:
+		m.cancelled = true
+		return m, tea.Quit
+
+	case tea.KeyEnter:
+		if len(m.filtered) > 0 {
+			m.confirmed = true
+			return m, tea.Quit
 		}
 
-		// Handle search input
-		if msg.Type == tea.KeyRunes || msg.Type == tea.KeyBackspace || msg.Type == tea.KeyDelete {
-			var cmd tea.Cmd
-			m.search, cmd = m.search.Update(msg)
-			m.filterItems()
-			if m.selected >= len(m.filtered) {
-				m.selected = max(0, len(m.filtered)-1)
-			}
-			return m, cmd
+	case tea.KeyUp, tea.KeyCtrlP:
+		if m.selected > 0 {
+			m.selected--
 		}
+
+	case tea.KeyDown, tea.KeyCtrlN:
+		if m.selected < len(m.filtered)-1 {
+			m.selected++
+		}
+
+	case tea.KeySpace:
+		if len(m.filtered) > 0 && m.selected < len(m.filtered) {
+			key := itemKey(m.filtered[m.selected])
+			m.selectedItems[key] = !m.selectedItems[key]
+		}
+		return m, nil
+	}
+
+	switch msg.String() {
+	case "/":
+		m.mode = modeSearch
+		m.search.Focus()
+		return m, nil
 	}
 
 	return m, nil
@@ -130,7 +217,6 @@ func (m *RestoreModel) filterItems() {
 	m.filtered = filtered
 }
 
-// fuzzyMatch checks if query chars appear in order in s
 func fuzzyMatch(s, query string) bool {
 	if len(query) == 0 {
 		return true
@@ -148,15 +234,17 @@ func fuzzyMatch(s, query string) bool {
 func (m RestoreModel) View() string {
 	var b strings.Builder
 
-	// Title
 	b.WriteString(titleStyle.Render("🗑️  Restore from Trash"))
 	b.WriteString("\n")
 
-	// Search input
-	b.WriteString(searchStyle.Render("> " + m.search.View()))
-	b.WriteString("\n\n")
+	if m.mode == modeSearch {
+		b.WriteString(searchStyle.Render("> " + m.search.View()))
+		b.WriteString("\n\n")
+	} else {
+		b.WriteString(previewStyle.Render("/ to search"))
+		b.WriteString("\n\n")
+	}
 
-	// Items list
 	if len(m.filtered) == 0 {
 		b.WriteString(itemStyle.Render("No matching files"))
 	} else {
@@ -174,7 +262,12 @@ func (m RestoreModel) View() string {
 				name = dirStyle.Render(name + "/")
 			}
 
-			line := fmt.Sprintf("%s  %s", ui.FormatSize(item.Size), name)
+			check := " "
+			if m.selectedItems[itemKey(item)] {
+				check = checkedStyle.Render("✓")
+			}
+
+			line := fmt.Sprintf("[%s] %s  %s", check, ui.FormatSize(item.Size), name)
 
 			if i == m.selected {
 				line = "▶ " + selectedStyle.Render(line)
@@ -191,7 +284,32 @@ func (m RestoreModel) View() string {
 		}
 	}
 
-	// Preview
+	if len(m.selectedItems) > 0 {
+		b.WriteString("\n")
+		b.WriteString(helpStyle.Render(fmt.Sprintf("Selected (%d):", len(m.selectedItems))))
+		b.WriteString("\n")
+		count := 0
+		for _, item := range m.items {
+			if m.selectedItems[itemKey(item)] {
+				name := item.Name
+				if item.IsDir {
+					name = dirStyle.Render(name + "/")
+				}
+				b.WriteString(previewStyle.Render("  • " + name))
+				b.WriteString("\n")
+				count++
+				if count >= 5 {
+					remaining := len(m.selectedItems) - count
+					if remaining > 0 {
+						b.WriteString(previewStyle.Render(fmt.Sprintf("  ... and %d more", remaining)))
+						b.WriteString("\n")
+					}
+					break
+				}
+			}
+		}
+	}
+
 	if len(m.filtered) > 0 && m.selected < len(m.filtered) {
 		item := m.filtered[m.selected]
 		b.WriteString("\n")
@@ -200,19 +318,50 @@ func (m RestoreModel) View() string {
 		b.WriteString(previewStyle.Render("Deleted:  " + item.DeletionDate.Format("2006-01-02 15:04")))
 	}
 
-	// Help
 	b.WriteString("\n")
-	b.WriteString(helpStyle.Render("↑/↓ navigate • Enter restore • Esc cancel"))
+	if m.mode == modeSearch {
+		selectedCount := len(m.selectedItems)
+		if selectedCount > 0 {
+			b.WriteString(helpStyle.Render(fmt.Sprintf("Esc clear • ↑/↓ nav • Tab select (%d) • Enter restore", selectedCount)))
+		} else {
+			b.WriteString(helpStyle.Render("Esc clear/exit • ↑/↓ navigate • Tab select • Enter restore"))
+		}
+	} else {
+		selectedCount := len(m.selectedItems)
+		if selectedCount > 0 {
+			b.WriteString(helpStyle.Render(fmt.Sprintf("↑/↓ navigate • Space select (%d selected) • / search • Enter restore • Esc cancel", selectedCount)))
+		} else {
+			b.WriteString(helpStyle.Render("↑/↓ navigate • Space select • / search • Enter restore • Esc cancel"))
+		}
+	}
 
 	return b.String()
 }
 
-// SelectedItem returns the selected item
+// SelectedItem returns the selected item (for single selection compatibility)
 func (m RestoreModel) SelectedItem() *trash.TrashItem {
 	if len(m.filtered) > 0 && m.selected < len(m.filtered) {
 		return &m.filtered[m.selected]
 	}
 	return nil
+}
+
+// SelectedItems returns all selected items for multi-restore
+func (m RestoreModel) SelectedItems() []trash.TrashItem {
+	if len(m.selectedItems) == 0 {
+		if item := m.SelectedItem(); item != nil {
+			return []trash.TrashItem{*item}
+		}
+		return nil
+	}
+
+	items := make([]trash.TrashItem, 0, len(m.selectedItems))
+	for _, item := range m.items {
+		if m.selectedItems[itemKey(item)] {
+			items = append(items, item)
+		}
+	}
+	return items
 }
 
 // Confirmed returns whether user confirmed selection

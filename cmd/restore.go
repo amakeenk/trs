@@ -135,28 +135,48 @@ func restoreInteractive(mgr *trash.Manager) {
 		return
 	}
 
-	selected := result.SelectedItem()
-	if selected == nil {
+	selected := result.SelectedItems()
+	if len(selected) == 0 {
 		fmt.Println("No file selected")
 		return
 	}
 
-	err = mgr.Restore(selected.Name, result.Force())
 	if flagJSON {
-		restoreResult := RestoreResult{
-			Name:     selected.Name,
-			Original: selected.OriginalPath,
-		}
-		if err != nil {
-			restoreResult.Error = err.Error()
-		}
-		output, _ := json.Marshal(restoreResult)
-		fmt.Println(string(output))
-	} else if err != nil {
-		exitWithError(fmt.Sprintf("\x1b[31mError: %v\x1b[0m", err), 1)
+		restoreMultipleJSON(mgr, selected, result.Force())
 	} else {
-		fmt.Printf("\x1b[32mRestored: %s → %s\x1b[0m\n", selected.Name, selected.OriginalPath)
+		restoreMultiple(mgr, selected, result.Force())
 	}
+}
+
+func restoreMultiple(mgr *trash.Manager, items []trash.TrashItem, force bool) {
+	success := 0
+	for _, item := range items {
+		err := mgr.Restore(item.Name, force)
+		if err != nil {
+			fmt.Printf("\x1b[31mError restoring %s: %v\x1b[0m\n", item.Name, err)
+		} else {
+			fmt.Printf("\x1b[32mRestored: %s → %s\x1b[0m\n", item.Name, item.OriginalPath)
+			success++
+		}
+	}
+	if success > 1 {
+		fmt.Printf("\x1b[32mRestored %d files\x1b[0m\n", success)
+	}
+}
+
+func restoreMultipleJSON(mgr *trash.Manager, items []trash.TrashItem, force bool) {
+	results := make([]RestoreResult, len(items))
+	for i, item := range items {
+		results[i] = RestoreResult{
+			Name:     item.Name,
+			Original: item.OriginalPath,
+		}
+		if err := mgr.Restore(item.Name, force); err != nil {
+			results[i].Error = err.Error()
+		}
+	}
+	output, _ := json.Marshal(results)
+	fmt.Println(string(output))
 }
 
 // restoreInteractiveSimple is a fallback for non-TTY environments
