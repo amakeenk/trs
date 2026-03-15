@@ -458,11 +458,19 @@ func (m *Manager) ListFromDir(trashDir string) ([]TrashItem, error) {
 			continue
 		}
 
+		// Calculate size - for directories, compute total contents size
+		var size int64
+		if entry.IsDir() {
+			size, _ = dirSize(FilesPath(trashDir, entry.Name()))
+		} else {
+			size = info.Size()
+		}
+
 		items = append(items, TrashItem{
 			Name:         entry.Name(),
 			OriginalPath: ti.Path,
 			DeletionDate: ti.DeletionDate,
-			Size:         info.Size(),
+			Size:         size,
 			IsDir:        entry.IsDir(),
 			TrashDir:     trashDir,
 		})
