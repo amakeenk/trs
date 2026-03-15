@@ -485,13 +485,13 @@ func TestRestoreModelUpdate(t *testing.T) {
 		assert.Equal(t, 0, m.selected)
 	})
 
-	t.Run("Arrow up at top stays at top", func(t *testing.T) {
+	t.Run("Arrow up at top wraps to bottom", func(t *testing.T) {
 		model := NewRestoreModel(items, false)
 		model.selected = 0
 
 		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyUp})
 		m := updatedModel.(RestoreModel)
-		assert.Equal(t, 0, m.selected)
+		assert.Equal(t, 2, m.selected)
 	})
 
 	t.Run("Arrow down navigates", func(t *testing.T) {
@@ -503,13 +503,13 @@ func TestRestoreModelUpdate(t *testing.T) {
 		assert.Equal(t, 1, m.selected)
 	})
 
-	t.Run("Arrow down at bottom stays at bottom", func(t *testing.T) {
+	t.Run("Arrow down at bottom wraps to top", func(t *testing.T) {
 		model := NewRestoreModel(items, false)
 		model.selected = 2
 
 		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyDown})
 		m := updatedModel.(RestoreModel)
-		assert.Equal(t, 2, m.selected)
+		assert.Equal(t, 0, m.selected)
 	})
 
 	t.Run("Ctrl+P navigates up", func(t *testing.T) {

@@ -139,14 +139,22 @@ func (m RestoreModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyUp, tea.KeyCtrlP:
-		if m.selected > 0 {
-			m.selected--
+		if len(m.filtered) > 0 {
+			if m.selected > 0 {
+				m.selected--
+			} else {
+				m.selected = len(m.filtered) - 1
+			}
 		}
 		return m, nil
 
 	case tea.KeyDown, tea.KeyCtrlN:
-		if m.selected < len(m.filtered)-1 {
-			m.selected++
+		if len(m.filtered) > 0 {
+			if m.selected < len(m.filtered)-1 {
+				m.selected++
+			} else {
+				m.selected = 0
+			}
 		}
 		return m, nil
 	}
@@ -173,13 +181,21 @@ func (m RestoreModel) updateSelectMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.KeyUp, tea.KeyCtrlP:
-		if m.selected > 0 {
-			m.selected--
+		if len(m.filtered) > 0 {
+			if m.selected > 0 {
+				m.selected--
+			} else {
+				m.selected = len(m.filtered) - 1
+			}
 		}
 
 	case tea.KeyDown, tea.KeyCtrlN:
-		if m.selected < len(m.filtered)-1 {
-			m.selected++
+		if len(m.filtered) > 0 {
+			if m.selected < len(m.filtered)-1 {
+				m.selected++
+			} else {
+				m.selected = 0
+			}
 		}
 
 	case tea.KeySpace:
@@ -248,7 +264,7 @@ func (m RestoreModel) View() string {
 	if len(m.filtered) == 0 {
 		b.WriteString(itemStyle.Render("No matching files"))
 	} else {
-		maxDisplay := 10
+		maxDisplay := 20
 		start := 0
 		if m.selected >= maxDisplay {
 			start = m.selected - maxDisplay + 1
@@ -298,7 +314,7 @@ func (m RestoreModel) View() string {
 				b.WriteString(previewStyle.Render("  • " + name))
 				b.WriteString("\n")
 				count++
-				if count >= 5 {
+				if count >= 10 {
 					remaining := len(m.selectedItems) - count
 					if remaining > 0 {
 						b.WriteString(previewStyle.Render(fmt.Sprintf("  ... and %d more", remaining)))
