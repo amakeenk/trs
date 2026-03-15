@@ -422,11 +422,9 @@ func TestRunTrashWithVerbose(t *testing.T) {
 	r.Close()
 	output := buf.String()
 
-	assert.Contains(t, output, "Trashed")
+	assert.Contains(t, output, "trashed file")
 	assert.Contains(t, output, file)
 }
-
-
 
 // TestOutputTable tests the outputTable function
 func TestOutputTable(t *testing.T) {
@@ -2697,161 +2695,161 @@ func TestRunStatusError(t *testing.T) {
 	if os.Getenv("GO_TEST_STATUS_ERROR") == "1" {
 		// Create invalid trash state
 		tmpHome := t.TempDir()
- t.Setenv("XDG_DATA_HOME", filepath.Join(tmpHome, ".local", "share"))
- t.Setenv("HOME", tmpHome)
+		t.Setenv("XDG_DATA_HOME", filepath.Join(tmpHome, ".local", "share"))
+		t.Setenv("HOME", tmpHome)
 
 		// Create corrupted trash directory
- trashDir := filepath.Join(tmpHome, ".local", "share", "Trash")
- require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "info"), 0755))
- require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "files"), 0755))
+		trashDir := filepath.Join(tmpHome, ".local", "share", "Trash")
+		require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "info"), 0755))
+		require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "files"), 0755))
 
 		// Create invalid .trashinfo file
- infoFile := filepath.Join(trashDir, "info", "bad.trashinfo")
- require.NoError(t, os.WriteFile(infoFile, []byte("invalid"), 0644))
+		infoFile := filepath.Join(trashDir, "info", "bad.trashinfo")
+		require.NoError(t, os.WriteFile(infoFile, []byte("invalid"), 0644))
 
 		// This should not crash
- runStatus(nil, nil)
- return
+		runStatus(nil, nil)
+		return
 	}
 
 	cmd := exec.Command(os.Args[0], "-test.run=TestRunStatusError")
- cmd.Env = append(os.Environ(), "GO_TEST_STATUS_ERROR=1")
- output, err := cmd.CombinedOutput()
- require.NoError(t, err, "output: %s", output)
+	cmd.Env = append(os.Environ(), "GO_TEST_STATUS_ERROR=1")
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, "output: %s", output)
 }
 
 // TestRunEmptyManagerError tests runEmpty with manager error
 func TestRunEmptyManagerError(t *testing.T) {
 	if os.Getenv("GO_TEST_EMPTY_MGR_ERROR") == "1" {
 		// Create invalid trash state
- tmpHome := t.TempDir()
- t.Setenv("XDG_DATA_HOME", filepath.Join(tmpHome, ".local", "share"))
- t.Setenv("HOME", tmpHome)
+		tmpHome := t.TempDir()
+		t.Setenv("XDG_DATA_HOME", filepath.Join(tmpHome, ".local", "share"))
+		t.Setenv("HOME", tmpHome)
 
 		// Create corrupted trash directory
- trashDir := filepath.Join(tmpHome, ".local", "share", "Trash")
- require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "info"), 0755))
- require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "files"), 0755))
+		trashDir := filepath.Join(tmpHome, ".local", "share", "Trash")
+		require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "info"), 0755))
+		require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "files"), 0755))
 
 		// Create invalid .trashinfo file
- infoFile := filepath.Join(trashDir, "info", "bad.trashinfo")
- require.NoError(t, os.WriteFile(infoFile, []byte("invalid"), 0644))
+		infoFile := filepath.Join(trashDir, "info", "bad.trashinfo")
+		require.NoError(t, os.WriteFile(infoFile, []byte("invalid"), 0644))
 
 		// Set flags
- oldJSON := flagJSON
- oldForce := flagForce
- flagJSON = true
- flagForce = true
- defer func() {
- flagJSON = oldJSON
- flagForce = oldForce
- }()
+		oldJSON := flagJSON
+		oldForce := flagForce
+		flagJSON = true
+		flagForce = true
+		defer func() {
+			flagJSON = oldJSON
+			flagForce = oldForce
+		}()
 
 		// This should not crash
- runEmpty(nil, nil)
- return
+		runEmpty(nil, nil)
+		return
 	}
 
 	cmd := exec.Command(os.Args[0], "-test.run=TestRunEmptyManagerError")
- cmd.Env = append(os.Environ(), "GO_TEST_EMPTY_MGR_ERROR=1")
- output, err := cmd.CombinedOutput()
- require.NoError(t, err, "output: %s", output)
+	cmd.Env = append(os.Environ(), "GO_TEST_EMPTY_MGR_ERROR=1")
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, "output: %s", output)
 }
 
 // TestRunRestoreManagerError tests runRestore with manager error
 func TestRunRestoreManagerError(t *testing.T) {
 	if os.Getenv("GO_TEST_RESTORE_MGR_ERROR") == "1" {
 		// Create invalid trash state
- tmpHome := t.TempDir()
- t.Setenv("XDG_DATA_HOME", filepath.Join(tmpHome, ".local", "share"))
- t.Setenv("HOME", tmpHome)
+		tmpHome := t.TempDir()
+		t.Setenv("XDG_DATA_HOME", filepath.Join(tmpHome, ".local", "share"))
+		t.Setenv("HOME", tmpHome)
 
 		// Create corrupted trash directory
- trashDir := filepath.Join(tmpHome, ".local", "share", "Trash")
- require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "info"), 0755))
- require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "files"), 0755))
+		trashDir := filepath.Join(tmpHome, ".local", "share", "Trash")
+		require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "info"), 0755))
+		require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "files"), 0755))
 
 		// Create invalid .trashinfo file
- infoFile := filepath.Join(trashDir, "info", "bad.trashinfo")
- require.NoError(t, os.WriteFile(infoFile, []byte("invalid"), 0644))
+		infoFile := filepath.Join(trashDir, "info", "bad.trashinfo")
+		require.NoError(t, os.WriteFile(infoFile, []byte("invalid"), 0644))
 
 		// Set flags
- oldJSON := flagJSON
- flagJSON = true
- defer func() { flagJSON = oldJSON }()
+		oldJSON := flagJSON
+		flagJSON = true
+		defer func() { flagJSON = oldJSON }()
 
 		// This should not crash
- runRestore(nil, nil)
- return
+		runRestore(nil, nil)
+		return
 	}
 
 	cmd := exec.Command(os.Args[0], "-test.run=TestRunRestoreManagerError")
- cmd.Env = append(os.Environ(), "GO_TEST_RESTORE_MGR_ERROR=1")
- output, err := cmd.CombinedOutput()
- require.NoError(t, err, "output: %s", output)
+	cmd.Env = append(os.Environ(), "GO_TEST_RESTORE_MGR_ERROR=1")
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, "output: %s", output)
 }
 
 // TestRunListManagerError tests runList with manager error
 func TestRunListManagerError(t *testing.T) {
 	if os.Getenv("GO_TEST_LIST_MGR_ERROR") == "1" {
 		// Create invalid trash state
- tmpHome := t.TempDir()
- t.Setenv("XDG_DATA_HOME", filepath.Join(tmpHome, ".local", "share"))
- t.Setenv("HOME", tmpHome)
+		tmpHome := t.TempDir()
+		t.Setenv("XDG_DATA_HOME", filepath.Join(tmpHome, ".local", "share"))
+		t.Setenv("HOME", tmpHome)
 
 		// Create corrupted trash directory
- trashDir := filepath.Join(tmpHome, ".local", "share", "Trash")
- require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "info"), 0755))
- require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "files"), 0755))
+		trashDir := filepath.Join(tmpHome, ".local", "share", "Trash")
+		require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "info"), 0755))
+		require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "files"), 0755))
 
 		// Create invalid .trashinfo file
- infoFile := filepath.Join(trashDir, "info", "bad.trashinfo")
- require.NoError(t, os.WriteFile(infoFile, []byte("invalid"), 0644))
+		infoFile := filepath.Join(trashDir, "info", "bad.trashinfo")
+		require.NoError(t, os.WriteFile(infoFile, []byte("invalid"), 0644))
 
 		// Set flags
- oldJSON := flagJSON
- flagJSON = true
- defer func() { flagJSON = oldJSON }()
+		oldJSON := flagJSON
+		flagJSON = true
+		defer func() { flagJSON = oldJSON }()
 
 		// This should not crash
- runList(nil, nil)
- return
+		runList(nil, nil)
+		return
 	}
 
 	cmd := exec.Command(os.Args[0], "-test.run=TestRunListManagerError")
- cmd.Env = append(os.Environ(), "GO_TEST_LIST_MGR_ERROR=1")
- output, err := cmd.CombinedOutput()
- require.NoError(t, err, "output: %s", output)
+	cmd.Env = append(os.Environ(), "GO_TEST_LIST_MGR_ERROR=1")
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, "output: %s", output)
 }
 
 // TestRestoreSpecificManagerError tests restoreSpecific with manager error
 func TestRestoreSpecificManagerError(t *testing.T) {
 	if os.Getenv("GO_TEST_RESTORE_SPECIFIC_MGR_ERROR") == "1" {
 		// Create invalid trash state
- tmpHome := t.TempDir()
- t.Setenv("XDG_DATA_HOME", filepath.Join(tmpHome, ".local", "share"))
- t.Setenv("HOME", tmpHome)
+		tmpHome := t.TempDir()
+		t.Setenv("XDG_DATA_HOME", filepath.Join(tmpHome, ".local", "share"))
+		t.Setenv("HOME", tmpHome)
 
 		// Create corrupted trash directory
- trashDir := filepath.Join(tmpHome, ".local", "share", "Trash")
- require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "info"), 0755))
- require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "files"), 0755))
+		trashDir := filepath.Join(tmpHome, ".local", "share", "Trash")
+		require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "info"), 0755))
+		require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "files"), 0755))
 
 		// Create invalid .trashinfo file
- infoFile := filepath.Join(trashDir, "info", "bad.trashinfo")
- require.NoError(t, os.WriteFile(infoFile, []byte("invalid"), 0644))
+		infoFile := filepath.Join(trashDir, "info", "bad.trashinfo")
+		require.NoError(t, os.WriteFile(infoFile, []byte("invalid"), 0644))
 
 		// Try to restore
- restoreSpecific(nil, "1")
- return
+		restoreSpecific(nil, "1")
+		return
 	}
 
 	cmd := exec.Command(os.Args[0], "-test.run=TestRestoreSpecificManagerError")
- cmd.Env = append(os.Environ(), "GO_TEST_RESTORE_SPECIFIC_MGR_ERROR=1")
- err := cmd.Run()
- // Should exit with error
- if e, ok := err.(*exec.ExitError); ok {
- assert.NotEqual(t, 0, e.ExitCode())
+	cmd.Env = append(os.Environ(), "GO_TEST_RESTORE_SPECIFIC_MGR_ERROR=1")
+	err := cmd.Run()
+	// Should exit with error
+	if e, ok := err.(*exec.ExitError); ok {
+		assert.NotEqual(t, 0, e.ExitCode())
 	} else {
 		t.Fatalf("expected exit error, got: %v", err)
 	}

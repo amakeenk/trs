@@ -21,9 +21,20 @@ type TrashItem struct {
 	TrashDir     string    // Trash directory containing this item
 }
 
+type ItemType int
+
+const (
+	ItemTypeFile ItemType = iota
+	ItemTypeDirectory
+	ItemTypeSymlink
+)
+
+type VerboseCallback func(path string, itemType ItemType)
+
 // Manager handles trash operations
 type Manager struct {
-	homeTrash string
+	homeTrash       string
+	verboseCallback VerboseCallback
 }
 
 // NewManager creates a new trash manager
@@ -36,6 +47,10 @@ func NewManager() (*Manager, error) {
 	return &Manager{homeTrash: homeTrash}, nil
 }
 
+func (m *Manager) SetVerboseCallback(cb VerboseCallback) {
+	m.verboseCallback = cb
+}
+
 // Move moves a file or directory to the trash
 func (m *Manager) Move(path string) error {
 	absPath, err := filepath.Abs(path)
@@ -44,12 +59,22 @@ func (m *Manager) Move(path string) error {
 	}
 
 	// Check if path exists (use Lstat for symlinks)
-	_, err = os.Lstat(absPath)
+	info, err := os.Lstat(absPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("file not found: %s", absPath)
 		}
 		return fmt.Errorf("stat %s: %w", absPath, err)
+	}
+
+	var itemType ItemType
+	switch {
+	case info.Mode()&os.ModeSymlink != 0:
+		itemType = ItemTypeSymlink
+	case info.IsDir():
+		itemType = ItemTypeDirectory
+	default:
+		itemType = ItemTypeFile
 	}
 
 	// Validate filename to prevent path traversal
@@ -91,7 +116,7 @@ func (m *Manager) Move(path string) error {
 		}
 
 		// Move the file/directory
-		if err := m.movePath(absPath, destPath); err != nil {
+		if err := m.movePathVerbose(absPath, destPath, info, itemType); err != nil {
 			// Clean up trashinfo on failure
 			os.Remove(infoPath)
 			return fmt.Errorf("move to trash: %w", err)
@@ -105,15 +130,57 @@ func (m *Manager) Move(path string) error {
 
 // movePath handles moving a file/directory, including cross-device moves
 func (m *Manager) movePath(src, dst string) error {
-	// Try rename first (fast, atomic)
 	err := os.Rename(src, dst)
 	if err == nil {
 		return nil
 	}
 
-	// If cross-device, fall back to copy + delete
 	if isCrossDeviceError(err) {
 		return m.copyAndDelete(src, dst)
+	}
+
+	return err
+}
+
+func (m *Manager) movePathVerbose(src, dst string, info os.FileInfo, itemType ItemType) error {
+	if m.verboseCallback != nil && info.IsDir() {
+		type item struct {
+			path     string
+			itemType ItemType
+		}
+		var items []item
+		filepath.Walk(src, func(path string, fi os.FileInfo, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if path == src {
+				return nil
+			}
+			if fi.IsDir() {
+				items = append(items, item{path, ItemTypeDirectory})
+			} else if fi.Mode()&os.ModeSymlink != 0 {
+				items = append(items, item{path, ItemTypeSymlink})
+			} else {
+				items = append(items, item{path, ItemTypeFile})
+			}
+			return nil
+		})
+		m.verboseCallback(src, ItemTypeDirectory)
+		for _, it := range items {
+			m.verboseCallback(it.path, it.itemType)
+		}
+	}
+
+	err := os.Rename(src, dst)
+	if err == nil {
+		if m.verboseCallback != nil && !info.IsDir() {
+			m.verboseCallback(src, itemType)
+		}
+		return nil
+	}
+
+	if isCrossDeviceError(err) {
+		return m.copyAndDeleteVerbose(src, dst, info)
 	}
 
 	return err
@@ -130,14 +197,41 @@ func (m *Manager) copyAndDelete(src, dst string) error {
 		return m.copyDirAndDelete(src, dst)
 	}
 
-	// Copy file
 	if err := copyFile(src, dst); err != nil {
-		// Cleanup partial file on error
 		os.Remove(dst)
 		return err
 	}
 
-	// Delete original
+	return os.Remove(src)
+}
+
+func (m *Manager) copyAndDeleteVerbose(src, dst string, info os.FileInfo) error {
+	if info == nil {
+		var err error
+		info, err = os.Lstat(src)
+		if err != nil {
+			return err
+		}
+	}
+
+	if info.IsDir() {
+		return m.copyDirAndDeleteVerbose(src, dst)
+	}
+
+	itemType := ItemTypeFile
+	if info.Mode()&os.ModeSymlink != 0 {
+		itemType = ItemTypeSymlink
+	}
+
+	if m.verboseCallback != nil {
+		m.verboseCallback(src, itemType)
+	}
+
+	if err := copyFile(src, dst); err != nil {
+		os.Remove(dst)
+		return err
+	}
+
 	return os.Remove(src)
 }
 
@@ -180,6 +274,56 @@ func (m *Manager) copyDirAndDelete(src, dst string) error {
 	}
 
 	// Delete original directory (use safeRemoveAll to prevent symlink attacks)
+	return safeRemoveAll(src)
+}
+
+func (m *Manager) copyDirAndDeleteVerbose(src, dst string) error {
+	if err := os.MkdirAll(dst, 0755); err != nil {
+		return err
+	}
+
+	if m.verboseCallback != nil {
+		m.verboseCallback(src, ItemTypeDirectory)
+	}
+
+	err := filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		relPath, _ := filepath.Rel(src, path)
+		dstPath := filepath.Join(dst, relPath)
+
+		if info.IsDir() {
+			if path != src && m.verboseCallback != nil {
+				m.verboseCallback(path, ItemTypeDirectory)
+			}
+			return os.MkdirAll(dstPath, info.Mode())
+		}
+
+		if info.Mode()&os.ModeSymlink != 0 {
+			if m.verboseCallback != nil {
+				m.verboseCallback(path, ItemTypeSymlink)
+			}
+			target, err := os.Readlink(path)
+			if err != nil {
+				return err
+			}
+			return os.Symlink(target, dstPath)
+		}
+
+		if m.verboseCallback != nil {
+			m.verboseCallback(path, ItemTypeFile)
+		}
+
+		return copyFile(path, dstPath)
+	})
+
+	if err != nil {
+		os.RemoveAll(dst)
+		return err
+	}
+
 	return safeRemoveAll(src)
 }
 

@@ -36,6 +36,19 @@ func runTrash(cmd *cobra.Command, args []string) {
 		exitWithError(fmt.Sprintf("Error: %v", err), 1)
 	}
 
+	if flagVerbose {
+		mgr.SetVerboseCallback(func(path string, itemType trash.ItemType) {
+			switch itemType {
+			case trash.ItemTypeFile:
+				fmt.Printf("\x1b[32mtrashed file %s\x1b[0m\n", path)
+			case trash.ItemTypeSymlink:
+				fmt.Printf("\x1b[36mtrashed symlink %s\x1b[0m\n", path)
+			case trash.ItemTypeDirectory:
+				fmt.Printf("\x1b[34mtrashed directory %s/\x1b[0m\n", path)
+			}
+		})
+	}
+
 	result := TrashResult{}
 
 	for _, path := range args {
@@ -53,9 +66,6 @@ func runTrash(cmd *cobra.Command, args []string) {
 		} else {
 			result.Success++
 			result.Files = append(result.Files, path)
-			if flagVerbose {
-				fmt.Printf("\x1b[32mTrashed: %s\x1b[0m\n", path)
-			}
 		}
 	}
 
