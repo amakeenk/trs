@@ -3,8 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"text/tabwriter"
+	"strings"
 
 	"altlinux.space/amakeenk/trs/internal/trash"
 	"altlinux.space/amakeenk/trs/internal/ui"
@@ -76,26 +75,62 @@ func outputJSON(items []trash.TrashItem) {
 	fmt.Println(string(output))
 }
 
+const (
+	colIndexWidth   = 6
+	colNameWidth    = 60
+	colSizeWidth    = 10
+	colDeletedWidth = 17
+)
+
+func formatColumn(s string, width int) string {
+	dw := ui.DisplayWidth(s)
+	if dw > width {
+		runes := []rune(s)
+		w := 0
+		for i, r := range runes {
+			rw := 1
+			if r >= 0x1100 {
+				rw = 2
+			}
+			if w+rw > width-3 {
+				return string(runes[:i]) + "..."
+			}
+			w += rw
+		}
+		return s
+	}
+	return s + strings.Repeat(" ", width-dw)
+}
+
 func outputTable(items []trash.TrashItem) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	header := fmt.Sprintf("%s  %s  %s  %s",
+		ui.BoldText(formatColumn("#", colIndexWidth)),
+		ui.BoldText(formatColumn("NAME", colNameWidth)),
+		ui.BoldText(formatColumn("SIZE", colSizeWidth)),
+		ui.BoldText(formatColumn("DELETED", colDeletedWidth)),
+	)
+	fmt.Println(header)
+	fmt.Printf("%s  %s  %s  %s\n",
+		strings.Repeat("─", colIndexWidth),
+		strings.Repeat("─", colNameWidth),
+		strings.Repeat("─", colSizeWidth),
+		strings.Repeat("─", colDeletedWidth),
+	)
 
-	// Header
-		fmt.Fprintln(w, ui.BoldText("INDEX\tNAME\tSIZE\tDELETED"))
-
-	// Rows
 	for i, item := range items {
-		name := item.Name
+		name := ui.Truncate(item.Name, colNameWidth-1)
 		if item.IsDir {
-			name = ui.Directory(name + "/")
+			name = ui.Directory(formatColumn(name+"/", colNameWidth))
+		} else {
+			name = formatColumn(name, colNameWidth)
 		}
 
-		fmt.Fprintf(w, "%d\t%s\t%s\t%s\n",
-			i+1,
+		row := fmt.Sprintf("%s  %s  %s  %s",
+			formatColumn(fmt.Sprintf("%d", i+1), colIndexWidth),
 			name,
-			ui.FormatSize(item.Size),
-			item.DeletionDate.Format("2006-01-02 15:04"),
+			formatColumn(ui.FormatSize(item.Size), colSizeWidth),
+			formatColumn(item.DeletionDate.Format("2006-01-02 15:04"), colDeletedWidth),
 		)
+		fmt.Println(row)
 	}
-
-	w.Flush()
 }
