@@ -198,7 +198,7 @@ func (m RestoreModel) updateSelectMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-	case tea.KeySpace:
+	case tea.KeyTab, tea.KeySpace:
 		if len(m.filtered) > 0 && m.selected < len(m.filtered) {
 			key := itemKey(m.filtered[m.selected])
 			m.selectedItems[key] = !m.selectedItems[key]
@@ -345,9 +345,9 @@ func (m RestoreModel) View() string {
 	} else {
 		selectedCount := len(m.selectedItems)
 		if selectedCount > 0 {
-			b.WriteString(helpStyle.Render(fmt.Sprintf("↑/↓ navigate • Space select (%d selected) • / search • Enter restore • Esc cancel", selectedCount)))
+			b.WriteString(helpStyle.Render(fmt.Sprintf("↑/↓ navigate • Tab select (%d selected) • / search • Enter restore • Esc cancel", selectedCount)))
 		} else {
-			b.WriteString(helpStyle.Render("↑/↓ navigate • Space select • / search • Enter restore • Esc cancel"))
+			b.WriteString(helpStyle.Render("↑/↓ navigate • Tab select • / search • Enter restore • Esc cancel"))
 		}
 	}
 
