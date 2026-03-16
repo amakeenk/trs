@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-03-16
+
+### Added
+- Fixed-width table columns with proper Unicode support in `trs list`
+- Tab key for file selection in restore TUI
+- Multi-select with search in restore TUI
+- Improved TUI navigation and display for restore command
+- Show individual files with types in verbose mode
+
+### Fixed
+- Calculate directory size including contents (was showing 0 for directories)
+
 ## [0.5.0] - 2026-03-08
 
 ### Fixed
@@ -102,7 +114,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - github.com/spf13/cobra - CLI framework
 - github.com/stretchr/testify - Testing assertions
 
-[Unreleased]: https://altlinux.space/amakeenk/trs/compare/v0.5.0...HEAD
+[Unreleased]: https://altlinux.space/amakeenk/trs/compare/v0.6.0...HEAD
+[0.6.0]: https://altlinux.space/amakeenk/trs/compare/v0.5.0...v0.6.0
 [0.5.0]: https://altlinux.space/amakeenk/trs/compare/v0.4.2...v0.5.0
 [0.4.2]: https://altlinux.space/amakeenk/trs/compare/v0.4.1...v0.4.2
 [0.4.1]: https://altlinux.space/amakeenk/trs/compare/v0.4.0...v0.4.1
