@@ -16,7 +16,7 @@ func TestNewManageModel(t *testing.T) {
 		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: time.Now(), Size: 200, IsDir: false},
 	}
 
-	model := NewManageModel(items, false)
+	model := NewManageModel(items, false, nil)
 
 	assert.Len(t, model.items, 2)
 	assert.Len(t, model.filtered, 2)
@@ -37,6 +37,9 @@ func TestNewManageModelWithForce(t *testing.T) {
 }
 
 func TestManageModelInit(t *testing.T) {
+	items := []trash.TrashItem{
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+	}
 	model := NewManageModel(items, false, nil)
 	cmd := model.Init()
 
@@ -50,7 +53,7 @@ func TestManageModelSelectedItem(t *testing.T) {
 	}
 
 	t.Run("valid selection", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.selected = 1
 
 		item := model.SelectedItem()
@@ -60,7 +63,7 @@ func TestManageModelSelectedItem(t *testing.T) {
 	})
 
 	t.Run("no items", func(t *testing.T) {
-		model := NewManageModel(items, false, nil)
+		model := NewManageModel([]trash.TrashItem{}, false, nil)
 
 		item := model.SelectedItem()
 
@@ -68,7 +71,7 @@ func TestManageModelSelectedItem(t *testing.T) {
 	})
 
 	t.Run("selection out of bounds", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.selected = 10
 
 		item := model.SelectedItem()
@@ -78,6 +81,9 @@ func TestManageModelSelectedItem(t *testing.T) {
 }
 
 func TestManageModelConfirmed(t *testing.T) {
+	items := []trash.TrashItem{
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+	}
 	model := NewManageModel(items, false, nil)
 	assert.False(t, model.Confirmed())
 
@@ -86,6 +92,9 @@ func TestManageModelConfirmed(t *testing.T) {
 }
 
 func TestManageModelCancelled(t *testing.T) {
+	items := []trash.TrashItem{
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+	}
 	model := NewManageModel(items, false, nil)
 	assert.False(t, model.Cancelled())
 
@@ -94,10 +103,10 @@ func TestManageModelCancelled(t *testing.T) {
 }
 
 func TestManageModelForce(t *testing.T) {
-	model := NewManageModel([]trash.TrashItem{}, true)
+	model := NewManageModel([]trash.TrashItem{}, true, nil)
 	assert.True(t, model.Force())
 
-	model2 := NewManageModel([]trash.TrashItem{}, false)
+	model2 := NewManageModel([]trash.TrashItem{}, false, nil)
 	assert.False(t, model2.Force())
 }
 
@@ -174,7 +183,7 @@ func TestFilterItems(t *testing.T) {
 	}
 
 	t.Run("empty query shows all", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.search.SetValue("")
 		model.filterItems()
 
@@ -182,7 +191,7 @@ func TestFilterItems(t *testing.T) {
 	})
 
 	t.Run("filter by name", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.search.SetValue("file")
 		model.filterItems()
 
@@ -192,7 +201,7 @@ func TestFilterItems(t *testing.T) {
 	})
 
 	t.Run("filter by path", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.search.SetValue("document")
 		model.filterItems()
 
@@ -201,7 +210,7 @@ func TestFilterItems(t *testing.T) {
 	})
 
 	t.Run("no matches", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.search.SetValue("nonexistent")
 		model.filterItems()
 
@@ -209,7 +218,7 @@ func TestFilterItems(t *testing.T) {
 	})
 
 	t.Run("fuzzy match", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.search.SetValue("f1t") // matches "file1.txt"
 		model.filterItems()
 
@@ -224,7 +233,7 @@ func TestFilterItemsResetsSelection(t *testing.T) {
 		{Name: "document.pdf", OriginalPath: "/path/to/document.pdf", DeletionDate: time.Now(), Size: 200, IsDir: false},
 	}
 
-	model := NewManageModel(items, false)
+	model := NewManageModel(items, false, nil)
 	model.selected = 1
 	model.search.SetValue("file")
 	model.filterItems()
@@ -275,16 +284,16 @@ func TestManageModelView(t *testing.T) {
 	}
 
 	t.Run("shows items", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		view := model.View()
 
-		assert.Contains(t, view, "Restore from Trash")
+		assert.Contains(t, view, "Manage Trash")
 		assert.Contains(t, view, "file.txt")
 		assert.Contains(t, view, "/path/to/file.txt")
 	})
 
 	t.Run("shows no matching files", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.search.SetValue("nonexistent")
 		model.filterItems()
 		view := model.View()
@@ -296,7 +305,7 @@ func TestManageModelView(t *testing.T) {
 		dirItems := []trash.TrashItem{
 			{Name: "mydir", OriginalPath: "/path/to/mydir", DeletionDate: time.Now(), Size: 0, IsDir: true},
 		}
-		model := NewManageModel(dirItems, false)
+		model := NewManageModel(dirItems, false, nil)
 		view := model.View()
 
 		assert.Contains(t, view, "mydir")
@@ -311,7 +320,7 @@ func TestManageModelUpdate(t *testing.T) {
 	}
 
 	t.Run("/ enters search mode", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		assert.Equal(t, modeSelect, model.mode)
 
 		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
@@ -321,7 +330,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("Space toggles selection", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		assert.Equal(t, modeSelect, model.mode)
 		key := itemKey(items[0])
 		assert.False(t, model.selectedItems[key])
@@ -333,7 +342,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("Space deselects item", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		key := itemKey(items[0])
 		model.selectedItems[key] = true
 
@@ -343,7 +352,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("Space selects multiple items", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		key0 := itemKey(items[0])
 		model.selectedItems[key0] = true
 		model.selected = 1
@@ -356,7 +365,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("SelectedItems returns selected", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.selectedItems[itemKey(items[0])] = true
 		model.selectedItems[itemKey(items[1])] = true
 
@@ -367,7 +376,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("SelectedItems returns single item when nothing selected", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.selected = 1
 
 		items := model.SelectedItems()
@@ -376,7 +385,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("SelectedItems preserves selection across filter", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.selectedItems[itemKey(items[0])] = true
 		model.selectedItems[itemKey(items[2])] = true
 
@@ -395,7 +404,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("Search input in search mode", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.mode = modeSearch
 		model.search.Focus()
 
@@ -406,7 +415,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("Backspace in search mode", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.mode = modeSearch
 		model.search.Focus()
 		model.search.SetValue("test")
@@ -417,7 +426,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("Backspace in search mode", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.mode = modeSearch
 		model.search.Focus()
 		model.search.SetValue("test")
@@ -428,7 +437,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("Non-key message returns unchanged", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		updatedModel, cmd := model.Update(nil)
 
 		m := updatedModel.(ManageModel)
@@ -437,7 +446,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("Esc cancels in select mode", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		updatedModel, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEsc})
 
 		m := updatedModel.(ManageModel)
@@ -447,7 +456,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("Esc cancels", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		updatedModel, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEsc})
 
 		m := updatedModel.(ManageModel)
@@ -456,14 +465,15 @@ func TestManageModelUpdate(t *testing.T) {
 		assert.NotNil(t, cmd)
 	})
 
-	t.Run("Enter confirms with items", func(t *testing.T) {
-		model := NewManageModel(items, false)
-		updatedModel, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	t.Run("Enter toggles selection at cursor", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		key := itemKey(items[0])
+		assert.False(t, model.selectedItems[key])
 
+		updatedModel, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 		m := updatedModel.(ManageModel)
-		assert.True(t, m.Confirmed())
-		assert.False(t, m.Cancelled())
-		assert.NotNil(t, cmd)
+		assert.True(t, m.selectedItems[key])
+		assert.Nil(t, cmd)
 	})
 
 	t.Run("Enter does nothing without items", func(t *testing.T) {
@@ -477,7 +487,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("Arrow up navigates", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.selected = 1
 
 		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyUp})
@@ -486,7 +496,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("Arrow up at top wraps to bottom", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.selected = 0
 
 		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyUp})
@@ -495,7 +505,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("Arrow down navigates", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.selected = 0
 
 		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyDown})
@@ -504,7 +514,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("Arrow down at bottom wraps to top", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.selected = 2
 
 		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyDown})
@@ -513,7 +523,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("Ctrl+P navigates up", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.selected = 2
 
 		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyCtrlP})
@@ -522,7 +532,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("Ctrl+N navigates down", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.selected = 0
 
 		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyCtrlN})
@@ -531,7 +541,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("Search input character", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.mode = modeSearch
 		model.search.Focus()
 
@@ -542,7 +552,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("Search input filters items", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.mode = modeSearch
 		model.search.Focus()
 
@@ -560,7 +570,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("Backspace removes character", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.mode = modeSearch
 		model.search.Focus()
 		model.search.SetValue("test")
@@ -571,7 +581,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("Delete key triggers update", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.mode = modeSearch
 		model.search.Focus()
 		model.search.SetValue("test")
@@ -583,7 +593,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("Selection resets when filtered list shrinks", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.mode = modeSearch
 		model.search.Focus()
 		model.selected = 2 // Select last item
@@ -600,7 +610,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("Selection adjusts when filtering", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		model.mode = modeSearch
 		model.search.Focus()
 		model.selected = 2
@@ -612,7 +622,7 @@ func TestManageModelUpdate(t *testing.T) {
 	})
 
 	t.Run("Non-key message returns unchanged", func(t *testing.T) {
-		model := NewManageModel(items, false)
+		model := NewManageModel(items, false, nil)
 		updatedModel, cmd := model.Update(nil)
 
 		m := updatedModel.(ManageModel)

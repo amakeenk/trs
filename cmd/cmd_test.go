@@ -52,11 +52,11 @@ func TestNewListCmd(t *testing.T) {
 	assert.Contains(t, cmd.Short, "List files in trash")
 }
 
-func TestNewRestoreCmd(t *testing.T) {
-	cmd := NewRestoreCmd()
+func TestNewManageCmd(t *testing.T) {
+	cmd := NewManageCmd()
 	assert.NotNil(t, cmd)
-	assert.Contains(t, cmd.Use, "restore")
-	assert.Contains(t, cmd.Short, "Restore files from trash")
+	assert.Contains(t, cmd.Use, "manage")
+	assert.Contains(t, cmd.Short, "Manage files in trash")
 }
 
 func TestNewEmptyCmd(t *testing.T) {
@@ -191,8 +191,8 @@ func TestListItem(t *testing.T) {
 	assert.False(t, item.IsDir)
 }
 
-func TestRestoreResult(t *testing.T) {
-	result := RestoreResult{
+func TestManageResult(t *testing.T) {
+	result := ManageResult{
 		Name:     "test.txt",
 		Original: "/path/to/test.txt",
 		Error:    "",
@@ -847,7 +847,7 @@ func TestRestoreByInputAmbiguousMatch(t *testing.T) {
 	assert.Len(t, items, 2) // Both files exist with "test_" prefix
 }
 
-// TestRestoreInteractiveEmpty tests restoreInteractive with empty trash
+// TestRestoreInteractiveEmpty tests manageInteractive with empty trash
 func TestRestoreInteractiveEmpty(t *testing.T) {
 	setupTestEnv(t)
 
@@ -859,7 +859,7 @@ func TestRestoreInteractiveEmpty(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	restoreInteractive(mgr)
+	manageInteractive(mgr)
 
 	os.Stdout = oldStdout
 	w.Close()
@@ -907,7 +907,7 @@ func TestRestoreSpecific(t *testing.T) {
 	assert.Contains(t, output, "specific_test.txt")
 }
 
-// TestRunRestoreWithLast tests runRestore with --last flag
+// TestRunRestoreWithLast tests runManage with --last flag
 func TestRunRestoreWithLast(t *testing.T) {
 	setupTestEnv(t)
 
@@ -934,7 +934,7 @@ func TestRunRestoreWithLast(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	runRestore(nil, nil)
+	runManage(nil, nil)
 
 	os.Stdout = oldStdout
 	w.Close()
@@ -947,7 +947,7 @@ func TestRunRestoreWithLast(t *testing.T) {
 	assert.Contains(t, output, "last_test.txt")
 }
 
-// TestRunRestoreWithArg tests runRestore with argument
+// TestRunRestoreWithArg tests runManage with argument
 func TestRunRestoreWithArg(t *testing.T) {
 	setupTestEnv(t)
 
@@ -974,7 +974,7 @@ func TestRunRestoreWithArg(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	runRestore(nil, []string{"1"})
+	runManage(nil, []string{"1"})
 
 	os.Stdout = oldStdout
 	w.Close()
@@ -1378,7 +1378,7 @@ func TestRestoreInteractiveSimple(t *testing.T) {
 		require.Len(t, items, 1)
 
 		// This function reads from stdin, so we test via subprocess
-		restoreInteractiveSimple(mgr, items)
+		manageInteractiveSimple(mgr, items)
 		return
 	}
 
@@ -1408,7 +1408,7 @@ func TestRestoreInteractiveSimpleCancelled(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, items, 1)
 
-		restoreInteractiveSimple(mgr, items)
+		manageInteractiveSimple(mgr, items)
 		return
 	}
 
@@ -2025,7 +2025,7 @@ func TestRestoreByInputJSONWithRestoreError(t *testing.T) {
 	assert.Contains(t, output, "error")
 }
 
-// TestRunRestoreInteractiveError tests restoreInteractive with manager error
+// TestRunRestoreInteractiveError tests manageInteractive with manager error
 func TestRunRestoreInteractiveError(t *testing.T) {
 	if os.Getenv("GO_TEST_INTERACTIVE_ERROR") == "1" {
 		// Create an invalid trash state to cause an error
@@ -2045,7 +2045,7 @@ func TestRunRestoreInteractiveError(t *testing.T) {
 		mgr, err := trash.NewManager()
 		require.NoError(t, err)
 
-		restoreInteractive(mgr)
+		manageInteractive(mgr)
 		return
 	}
 
@@ -2054,7 +2054,7 @@ func TestRunRestoreInteractiveError(t *testing.T) {
 	_ = cmd.Run() // Should not crash
 }
 
-// TestRestoreInteractiveWithJSON tests restoreInteractive with JSON output
+// TestRestoreInteractiveWithJSON tests manageInteractive with JSON output
 func TestRestoreInteractiveWithJSON(t *testing.T) {
 	if os.Getenv("GO_TEST_INTERACTIVE_JSON") == "1" {
 		setupTestEnv(t)
@@ -2068,7 +2068,7 @@ func TestRestoreInteractiveWithJSON(t *testing.T) {
 		require.NoError(t, mgr.Move(file))
 
 		// JSON flag is checked but not used in non-TTY mode
-		restoreInteractive(mgr)
+		manageInteractive(mgr)
 		return
 	}
 
@@ -2120,7 +2120,7 @@ func TestTrashFilePermissionError(t *testing.T) {
 	t.Skip("requires special permission setup")
 }
 
-// TestRestoreInteractiveSimpleDirect tests restoreInteractiveSimple directly
+// TestRestoreInteractiveSimpleDirect tests manageInteractiveSimple directly
 func TestRestoreInteractiveSimpleDirect(t *testing.T) {
 	setupTestEnv(t)
 
@@ -2152,7 +2152,7 @@ func TestRestoreInteractiveSimpleDirect(t *testing.T) {
 	rOut, wOut, _ := os.Pipe()
 	os.Stdout = wOut
 
-	restoreInteractiveSimple(mgr, items)
+	manageInteractiveSimple(mgr, items)
 
 	// Restore stdin/stdout
 	os.Stdin = oldStdin
@@ -2167,7 +2167,7 @@ func TestRestoreInteractiveSimpleDirect(t *testing.T) {
 	assert.Contains(t, output, "simple_direct_test.txt")
 }
 
-// TestRestoreInteractiveSimpleDirectCancel tests restoreInteractiveSimple with cancel
+// TestRestoreInteractiveSimpleDirectCancel tests manageInteractiveSimple with cancel
 func TestRestoreInteractiveSimpleDirectCancel(t *testing.T) {
 	setupTestEnv(t)
 
@@ -2199,7 +2199,7 @@ func TestRestoreInteractiveSimpleDirectCancel(t *testing.T) {
 	rOut, wOut, _ := os.Pipe()
 	os.Stdout = wOut
 
-	restoreInteractiveSimple(mgr, items)
+	manageInteractiveSimple(mgr, items)
 
 	// Restore stdin/stdout
 	os.Stdin = oldStdin
@@ -2214,7 +2214,7 @@ func TestRestoreInteractiveSimpleDirectCancel(t *testing.T) {
 	assert.Contains(t, output, "Cancelled")
 }
 
-// TestRestoreInteractiveNonEmpty tests restoreInteractive with non-empty trash
+// TestRestoreInteractiveNonEmpty tests manageInteractive with non-empty trash
 func TestRestoreInteractiveNonEmpty(t *testing.T) {
 	setupTestEnv(t)
 
@@ -2242,7 +2242,7 @@ func TestRestoreInteractiveNonEmpty(t *testing.T) {
 	rOut, wOut, _ := os.Pipe()
 	os.Stdout = wOut
 
-	restoreInteractive(mgr)
+	manageInteractive(mgr)
 
 	// Restore stdin/stdout
 	os.Stdin = oldStdin
@@ -2254,11 +2254,11 @@ func TestRestoreInteractiveNonEmpty(t *testing.T) {
 	rOut.Close()
 	output := buf.String()
 
-	// Since stdout is not a terminal, it should call restoreInteractiveSimple
+	// Since stdout is not a terminal, it should call manageInteractiveSimple
 	assert.Contains(t, output, "interactive_nonempty_test.txt")
 }
 
-// TestRestoreInteractiveNonEmptyCancel tests restoreInteractive with cancel
+// TestRestoreInteractiveNonEmptyCancel tests manageInteractive with cancel
 func TestRestoreInteractiveNonEmptyCancel(t *testing.T) {
 	setupTestEnv(t)
 
@@ -2286,7 +2286,7 @@ func TestRestoreInteractiveNonEmptyCancel(t *testing.T) {
 	rOut, wOut, _ := os.Pipe()
 	os.Stdout = wOut
 
-	restoreInteractive(mgr)
+	manageInteractive(mgr)
 
 	// Restore stdin/stdout
 	os.Stdin = oldStdin
@@ -2627,7 +2627,7 @@ func TestRestoreSpecificByName(t *testing.T) {
 	assert.Contains(t, output, "specific_by_name_test.txt")
 }
 
-// TestRunRestoreInteractive tests runRestore with interactive mode
+// TestRunRestoreInteractive tests runManage with interactive mode
 func TestRunRestoreInteractive(t *testing.T) {
 	setupTestEnv(t)
 
@@ -2665,7 +2665,7 @@ func TestRunRestoreInteractive(t *testing.T) {
 	rOut, wOut, _ := os.Pipe()
 	os.Stdout = wOut
 
-	runRestore(nil, []string{})
+	runManage(nil, []string{})
 
 	// Restore stdin/stdout
 	os.Stdin = oldStdin
@@ -2757,7 +2757,7 @@ func TestRunEmptyManagerError(t *testing.T) {
 	require.NoError(t, err, "output: %s", output)
 }
 
-// TestRunRestoreManagerError tests runRestore with manager error
+// TestRunRestoreManagerError tests runManage with manager error
 func TestRunRestoreManagerError(t *testing.T) {
 	if os.Getenv("GO_TEST_RESTORE_MGR_ERROR") == "1" {
 		// Create invalid trash state
@@ -2780,7 +2780,7 @@ func TestRunRestoreManagerError(t *testing.T) {
 		defer func() { flagJSON = oldJSON }()
 
 		// This should not crash
-		runRestore(nil, nil)
+		runManage(nil, nil)
 		return
 	}
 
@@ -3038,7 +3038,7 @@ func TestRestoreMultipleJSON(t *testing.T) {
 	r.Close()
 	output := buf.String()
 
-	var results []RestoreResult
+	var results []ManageResult
 	require.NoError(t, json.Unmarshal([]byte(output), &results))
 	require.Len(t, results, 2)
 	assert.Empty(t, results[0].Error)
@@ -3069,7 +3069,7 @@ func TestRestoreMultipleJSONWithErrors(t *testing.T) {
 	r.Close()
 	output := buf.String()
 
-	var results []RestoreResult
+	var results []ManageResult
 	require.NoError(t, json.Unmarshal([]byte(output), &results))
 	require.Len(t, results, 1)
 	assert.NotEmpty(t, results[0].Error)

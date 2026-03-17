@@ -208,7 +208,7 @@ func TestStatusEmptyVerbose(t *testing.T) {
 	require.Contains(t, output, "0 files")
 }
 
-// Test restoreInteractive with non-empty trash and JSON flag
+// Test manageInteractive with non-empty trash and JSON flag
 func TestRestoreInteractiveJSON(t *testing.T) {
 	setupTestEnv(t)
 
@@ -235,7 +235,7 @@ func TestRestoreInteractiveJSON(t *testing.T) {
 	}()
 
 	output := captureStdout(t, func() {
-		restoreInteractive(mgr)
+		manageInteractive(mgr)
 	})
 
 	os.Stdin = oldStdin
@@ -274,4 +274,3 @@ func TestStatusEmptyJSON(t *testing.T) {
 }
 
 // Test restoreByInput with text output and restore error
-

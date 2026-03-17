@@ -283,6 +283,37 @@ func restoreByInput(mgr *trash.Manager, items []trash.TrashItem, input string) {
 	}
 }
 
+func restoreMultiple(mgr *trash.Manager, items []trash.TrashItem, force bool) {
+	success := 0
+	for _, item := range items {
+		err := mgr.Restore(item.Name, force)
+		if err != nil {
+			fmt.Printf("\x1b[31mError restoring %s: %v\x1b[0m\n", item.Name, err)
+		} else {
+			fmt.Printf("\x1b[32mRestored: %s → %s\x1b[0m\n", item.Name, item.OriginalPath)
+			success++
+		}
+	}
+	if success > 1 {
+		fmt.Printf("\x1b[32mRestored %d files\x1b[0m\n", success)
+	}
+}
+
+func restoreMultipleJSON(mgr *trash.Manager, items []trash.TrashItem, force bool) {
+	results := make([]ManageResult, len(items))
+	for i, item := range items {
+		results[i] = ManageResult{
+			Name:     item.Name,
+			Original: item.OriginalPath,
+		}
+		if err := mgr.Restore(item.Name, force); err != nil {
+			results[i].Error = err.Error()
+		}
+	}
+	output, _ := json.Marshal(results)
+	fmt.Println(string(output))
+}
+
 func NewRestoreCmd() *cobra.Command {
 	return NewManageCmd()
 }

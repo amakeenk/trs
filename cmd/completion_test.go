@@ -131,7 +131,7 @@ func TestCompletionBashOutput(t *testing.T) {
 	assert.Contains(t, output, "trs", "completion should reference 'trs' command")
 
 	// Check for subcommands in completion
-	expectedSubcmds := []string{"list", "restore", "empty", "status", "version"}
+	expectedSubcmds := []string{"list", "manage", "empty", "status", "version"}
 	for _, subcmd := range expectedSubcmds {
 		assert.Contains(t, output, subcmd, "completion should include '%s' subcommand", subcmd)
 	}
@@ -193,4 +193,3 @@ func TestCompletionCommandHelp(t *testing.T) {
 	assert.True(t, strings.Contains(output, "Fish:") ||
 		strings.Contains(output, "fish"), "help should mention fish")
 }
-
