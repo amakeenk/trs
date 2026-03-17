@@ -746,3 +746,33 @@ func TestCopyDirAndDeleteVerboseWithNilCallback(t *testing.T) {
 	_, err = os.Stat(srcDir)
 	assert.True(t, os.IsNotExist(err))
 }
+
+func TestManager_Delete(t *testing.T) {
+	// Setup
+	tmpHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", filepath.Join(tmpHome, ".local", "share"))
+	t.Setenv("HOME", tmpHome)
+
+	mgr, err := NewManager()
+	require.NoError(t, err)
+
+	// Create a test file and trash it
+	testFile := filepath.Join(tmpHome, "testfile.txt")
+	require.NoError(t, os.WriteFile(testFile, []byte("hello"), 0644))
+	require.NoError(t, mgr.Move(testFile))
+
+	// Verify it's in trash
+	items, err := mgr.List()
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	require.Equal(t, "testfile.txt", items[0].Name)
+
+	// Delete from trash
+	err = mgr.Delete("testfile.txt")
+	require.NoError(t, err)
+
+	// Verify it's gone
+	items, err = mgr.List()
+	require.NoError(t, err)
+	require.Len(t, items, 0)
+}

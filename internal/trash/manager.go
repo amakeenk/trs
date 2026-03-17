@@ -614,6 +614,53 @@ func (m *Manager) RestoreFromDir(trashDir, trashName string, overwrite bool) err
 	return nil
 }
 
+// Delete permanently removes a file from trash (no recovery possible)
+func (m *Manager) Delete(trashName string) error {
+	dirs, err := GetAllTrashDirs()
+	if err != nil {
+		return fmt.Errorf("get trash directories: %w", err)
+	}
+
+	var lastErr error
+	for _, dir := range dirs {
+		err := m.DeleteFromDir(dir, trashName)
+		if err == nil {
+			return nil
+		}
+		if isNotFoundError(err) {
+			continue
+		}
+		lastErr = err
+	}
+
+	if lastErr != nil {
+		return lastErr
+	}
+	return fmt.Errorf("file not in trash: %s", trashName)
+}
+
+// DeleteFromDir deletes from a specific trash directory
+func (m *Manager) DeleteFromDir(trashDir, trashName string) error {
+	if err := validateFileName(trashName); err != nil {
+		return fmt.Errorf("invalid filename: %w", err)
+	}
+
+	srcPath := FilesPath(trashDir, trashName)
+	infoPath := TrashInfoPath(trashDir, trashName)
+
+	if _, err := os.Lstat(srcPath); err != nil {
+		return fmt.Errorf("file not in trash: %s", trashName)
+	}
+
+	if err := chmodAndRemoveAll(srcPath); err != nil {
+		return fmt.Errorf("delete: %w", err)
+	}
+
+	os.Remove(infoPath)
+
+	return nil
+}
+
 // FindByName finds items in trash matching a name (supports partial match)
 func (m *Manager) FindByName(name string) ([]TrashItem, error) {
 	items, err := m.List()
