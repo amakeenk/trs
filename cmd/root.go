@@ -24,8 +24,8 @@ system trash instead of permanently deleting them.
 Files are moved according to the XDG Trash specification:
 - $XDG_DATA_HOME/Trash or ~/.local/share/Trash/
 - Cross-device files go to $VOLUME/.Trash-$UID/`,
-	Run:  runTrash,
-	Args: cobra.ArbitraryArgs,
+	Run:               runTrash,
+	Args:              cobra.ArbitraryArgs,
 	ValidArgsFunction: fileCompletion,
 }
 
@@ -41,7 +41,7 @@ func init() {
 
 	// Add subcommands
 	rootCmd.AddCommand(NewListCmd())
-	rootCmd.AddCommand(NewRestoreCmd())
+	rootCmd.AddCommand(NewManageCmd())
 	rootCmd.AddCommand(NewEmptyCmd())
 	rootCmd.AddCommand(NewStatusCmd())
 	rootCmd.AddCommand(newCompletionCmd())

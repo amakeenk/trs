@@ -19,17 +19,19 @@ var (
 	flagOverwrite bool
 )
 
-// NewRestoreCmd creates the restore command
-func NewRestoreCmd() *cobra.Command {
+func NewManageCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "restore [name|index]",
-		Short: "Restore files from trash",
-		Long: `Restore files from trash.
+		Use:   "manage [name|index]",
+		Short: "Manage files in trash (restore or delete)",
+		Long: `Manage files in trash with an interactive TUI.
 
-Without arguments, shows interactive selection.
+Without arguments, shows interactive selection where you can:
+- Restore selected files back to their original locations
+- Permanently delete selected files
+
 With --last, restores the most recently trashed file.
 With a name or index, restores that specific file.`,
-		Run: runRestore,
+		Run: runManage,
 	}
 
 	cmd.Flags().BoolVar(&flagLast, "last", false, "restore the most recently trashed file")
@@ -38,32 +40,30 @@ With a name or index, restores that specific file.`,
 	return cmd
 }
 
-// RestoreResult for JSON output
-type RestoreResult struct {
+type ManageResult struct {
 	Name     string `json:"name,omitempty"`
 	Original string `json:"original_path,omitempty"`
+	Action   string `json:"action,omitempty"`
+	Success  bool   `json:"success,omitempty"`
 	Error    string `json:"error,omitempty"`
 }
 
-func runRestore(cmd *cobra.Command, args []string) {
+func runManage(cmd *cobra.Command, args []string) {
 	mgr, err := trash.NewManager()
 	if err != nil {
 		exitWithError(fmt.Sprintf("Error: %v", err), 1)
 	}
 
-	// --last flag
 	if flagLast {
 		restoreLast(mgr)
 		return
 	}
 
-	// No args - interactive mode
 	if len(args) == 0 {
-		restoreInteractive(mgr)
+		manageInteractive(mgr)
 		return
 	}
 
-	// Specific file or index
 	restoreSpecific(mgr, args[0])
 }
 
@@ -71,7 +71,7 @@ func restoreLast(mgr *trash.Manager) {
 	item, err := mgr.GetLast()
 	if err != nil {
 		if flagJSON {
-			output, _ := json.Marshal(RestoreResult{Error: err.Error()})
+			output, _ := json.Marshal(ManageResult{Error: err.Error()})
 			fmt.Println(string(output))
 		} else {
 			exitWithError(fmt.Sprintf("Error: %v", err), 1)
@@ -81,9 +81,11 @@ func restoreLast(mgr *trash.Manager) {
 
 	err = mgr.Restore(item.Name, flagOverwrite)
 	if flagJSON {
-		result := RestoreResult{
+		result := ManageResult{
 			Name:     item.Name,
 			Original: item.OriginalPath,
+			Action:   "restore",
+			Success:  err == nil,
 		}
 		if err != nil {
 			result.Error = err.Error()
@@ -97,7 +99,7 @@ func restoreLast(mgr *trash.Manager) {
 	}
 }
 
-func restoreInteractive(mgr *trash.Manager) {
+func manageInteractive(mgr *trash.Manager) {
 	items, err := mgr.List()
 	if err != nil {
 		exitWithError(fmt.Sprintf("Error: %v", err), 1)
@@ -108,22 +110,19 @@ func restoreInteractive(mgr *trash.Manager) {
 		return
 	}
 
-	// Check if stdout is a terminal
 	if !ui.IsTerminal() {
-		// Fallback to simple list for non-TTY
-		restoreInteractiveSimple(mgr, items)
+		manageInteractiveSimple(mgr, items)
 		return
 	}
 
-	// Launch TUI
-	model := tui.NewRestoreModel(items, flagOverwrite)
+	model := tui.NewManageModel(items, flagOverwrite, mgr)
 	p := tea.NewProgram(model)
 	finalModel, err := p.Run()
 	if err != nil {
 		exitWithError(fmt.Sprintf("TUI error: %v", err), 1)
 	}
 
-	result := finalModel.(tui.RestoreModel)
+	result := finalModel.(tui.ManageModel)
 
 	if result.Cancelled() {
 		fmt.Println("Cancelled")
@@ -135,53 +134,70 @@ func restoreInteractive(mgr *trash.Manager) {
 		return
 	}
 
-	selected := result.SelectedItems()
-	if len(selected) == 0 {
-		fmt.Println("No file selected")
+	if flagJSON {
+		outputResultsJSON(result.Results())
+	} else {
+		outputResults(result.Results())
+	}
+}
+
+func outputResults(results []tui.ActionResult) {
+	if len(results) == 0 {
+		fmt.Println("No action taken")
 		return
 	}
 
-	if flagJSON {
-		restoreMultipleJSON(mgr, selected, result.Force())
-	} else {
-		restoreMultiple(mgr, selected, result.Force())
-	}
-}
+	successCount := 0
+	failCount := 0
 
-func restoreMultiple(mgr *trash.Manager, items []trash.TrashItem, force bool) {
-	success := 0
-	for _, item := range items {
-		err := mgr.Restore(item.Name, force)
-		if err != nil {
-			fmt.Printf("\x1b[31mError restoring %s: %v\x1b[0m\n", item.Name, err)
+	for _, r := range results {
+		name := r.Item.Name
+		if r.Item.IsDir {
+			name += "/"
+		}
+
+		if r.Success {
+			successCount++
+			actionText := "Restored"
+			if r.Item.IsDir {
+				actionText = "Restored"
+			}
+			fmt.Printf("\x1b[32m%s: %s → %s\x1b[0m\n", actionText, name, r.Item.OriginalPath)
 		} else {
-			fmt.Printf("\x1b[32mRestored: %s → %s\x1b[0m\n", item.Name, item.OriginalPath)
-			success++
+			failCount++
+			errMsg := ""
+			if r.Error != nil {
+				errMsg = r.Error.Error()
+			}
+			fmt.Printf("\x1b[31mError: %s - %s\x1b[0m\n", name, errMsg)
 		}
 	}
-	if success > 1 {
-		fmt.Printf("\x1b[32mRestored %d files\x1b[0m\n", success)
+
+	if successCount > 1 {
+		fmt.Printf("\x1b[32mSuccessfully processed %d items\x1b[0m\n", successCount)
+	}
+	if failCount > 0 {
+		fmt.Printf("\x1b[31mFailed: %d items\x1b[0m\n", failCount)
 	}
 }
 
-func restoreMultipleJSON(mgr *trash.Manager, items []trash.TrashItem, force bool) {
-	results := make([]RestoreResult, len(items))
-	for i, item := range items {
-		results[i] = RestoreResult{
-			Name:     item.Name,
-			Original: item.OriginalPath,
+func outputResultsJSON(results []tui.ActionResult) {
+	output := make([]ManageResult, len(results))
+	for i, r := range results {
+		output[i] = ManageResult{
+			Name:     r.Item.Name,
+			Original: r.Item.OriginalPath,
+			Success:  r.Success,
 		}
-		if err := mgr.Restore(item.Name, force); err != nil {
-			results[i].Error = err.Error()
+		if r.Error != nil {
+			output[i].Error = r.Error.Error()
 		}
 	}
-	output, _ := json.Marshal(results)
-	fmt.Println(string(output))
+	data, _ := json.Marshal(output)
+	fmt.Println(string(data))
 }
 
-// restoreInteractiveSimple is a fallback for non-TTY environments
-func restoreInteractiveSimple(mgr *trash.Manager, items []trash.TrashItem) {
-	// Simple numbered list
+func manageInteractiveSimple(mgr *trash.Manager, items []trash.TrashItem) {
 	for i, item := range items {
 		fmt.Printf("%d) %s\n", i+1, item.Name)
 	}
@@ -197,7 +213,6 @@ func restoreInteractiveSimple(mgr *trash.Manager, items []trash.TrashItem) {
 		return
 	}
 
-	// Validate input for security
 	if err := validateCLIInput(input); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return
@@ -218,14 +233,12 @@ func restoreSpecific(mgr *trash.Manager, nameOrIndex string) {
 func restoreByInput(mgr *trash.Manager, items []trash.TrashItem, input string) {
 	var target *trash.TrashItem
 
-	// Try as index first
 	if idx, err := strconv.Atoi(input); err == nil {
 		if idx < 1 || idx > len(items) {
 			exitWithError(fmt.Sprintf("Invalid index: %d (must be 1-%d)", idx, len(items)), 2)
 		}
 		target = &items[idx-1]
 	} else {
-		// Try as name - find exact or partial match
 		var matches []trash.TrashItem
 		for _, item := range items {
 			if item.Name == input {
@@ -252,9 +265,11 @@ func restoreByInput(mgr *trash.Manager, items []trash.TrashItem, input string) {
 
 	err := mgr.Restore(target.Name, flagOverwrite)
 	if flagJSON {
-		result := RestoreResult{
+		result := ManageResult{
 			Name:     target.Name,
 			Original: target.OriginalPath,
+			Action:   "restore",
+			Success:  err == nil,
 		}
 		if err != nil {
 			result.Error = err.Error()
@@ -266,4 +281,8 @@ func restoreByInput(mgr *trash.Manager, items []trash.TrashItem, input string) {
 	} else {
 		fmt.Printf("\x1b[32mRestored: %s → %s\x1b[0m\n", target.Name, target.OriginalPath)
 	}
+}
+
+func NewRestoreCmd() *cobra.Command {
+	return NewManageCmd()
 }

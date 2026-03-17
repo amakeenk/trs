@@ -16,7 +16,23 @@ type mode int
 const (
 	modeSelect mode = iota
 	modeSearch
+	modeConfirm
+	modeResults
 )
+
+type actionType int
+
+const (
+	actionRestore actionType = iota
+	actionDelete
+)
+
+// ActionResult represents the result of an action on a single item
+type ActionResult struct {
+	Item    trash.TrashItem
+	Success bool
+	Error   error
+}
 
 // ManageModel is the TUI model for trash management
 type ManageModel struct {
@@ -26,9 +42,12 @@ type ManageModel struct {
 	selectedItems map[string]bool
 	search        textinput.Model
 	mode          mode
+	action        actionType
 	confirmed     bool
 	cancelled     bool
 	force         bool
+	manager       *trash.Manager
+	results       []ActionResult
 }
 
 var (
@@ -62,6 +81,22 @@ var (
 
 	checkedStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("82"))
+
+	warningStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("214")).
+			Bold(true)
+
+	successStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("82"))
+
+	errorStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("196"))
+
+	confirmBoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("214")).
+			Padding(1, 2).
+			MarginTop(2)
 )
 
 func itemKey(item trash.TrashItem) string {
@@ -69,7 +104,7 @@ func itemKey(item trash.TrashItem) string {
 }
 
 // NewManageModel creates a new manage TUI model
-func NewManageModel(items []trash.TrashItem, force bool) ManageModel {
+func NewManageModel(items []trash.TrashItem, force bool, manager *trash.Manager) ManageModel {
 	ti := textinput.New()
 	ti.Placeholder = "Search..."
 	ti.CharLimit = 100
@@ -83,6 +118,7 @@ func NewManageModel(items []trash.TrashItem, force bool) ManageModel {
 		selectedItems: make(map[string]bool),
 		mode:          modeSelect,
 		force:         force,
+		manager:       manager,
 	}
 }
 
@@ -98,6 +134,10 @@ func (m ManageModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateSearchMode(msg)
 		case modeSelect:
 			return m.updateSelectMode(msg)
+		case modeConfirm:
+			return m.updateConfirmMode(msg)
+		case modeResults:
+			return m.updateResultsMode(msg)
 		}
 	}
 
@@ -118,9 +158,10 @@ func (m ManageModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyEnter:
-		if len(m.filtered) > 0 {
-			m.confirmed = true
-			return m, tea.Quit
+		// Toggle selection instead of confirming
+		if len(m.filtered) > 0 && m.selected < len(m.filtered) {
+			key := itemKey(m.filtered[m.selected])
+			m.selectedItems[key] = !m.selectedItems[key]
 		}
 		return m, nil
 
@@ -159,6 +200,22 @@ func (m ManageModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	// Check for action keys 'r' and 'd'
+	switch msg.String() {
+	case "r":
+		if len(m.selectedItems) > 0 {
+			m.action = actionRestore
+			m.mode = modeConfirm
+			return m, nil
+		}
+	case "d":
+		if len(m.selectedItems) > 0 {
+			m.action = actionDelete
+			m.mode = modeConfirm
+			return m, nil
+		}
+	}
+
 	var cmd tea.Cmd
 	m.search, cmd = m.search.Update(msg)
 	m.filterItems()
@@ -175,10 +232,12 @@ func (m ManageModel) updateSelectMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case tea.KeyEnter:
-		if len(m.filtered) > 0 {
-			m.confirmed = true
-			return m, tea.Quit
+		// Toggle selection instead of confirming
+		if len(m.filtered) > 0 && m.selected < len(m.filtered) {
+			key := itemKey(m.filtered[m.selected])
+			m.selectedItems[key] = !m.selectedItems[key]
 		}
+		return m, nil
 
 	case tea.KeyUp, tea.KeyCtrlP:
 		if len(m.filtered) > 0 {
@@ -211,9 +270,90 @@ func (m ManageModel) updateSelectMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.mode = modeSearch
 		m.search.Focus()
 		return m, nil
+	case "r":
+		if len(m.selectedItems) > 0 {
+			m.action = actionRestore
+			m.mode = modeConfirm
+			return m, nil
+		}
+	case "d":
+		if len(m.selectedItems) > 0 {
+			m.action = actionDelete
+			m.mode = modeConfirm
+			return m, nil
+		}
 	}
 
 	return m, nil
+}
+
+func (m ManageModel) updateConfirmMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.Type {
+	case tea.KeyCtrlC, tea.KeyEsc:
+		m.mode = modeSelect
+		return m, nil
+
+	case tea.KeyEnter:
+		// Execute the action
+		m.executeAction()
+		m.mode = modeResults
+		return m, nil
+	}
+
+	switch msg.String() {
+	case "y", "Y":
+		m.executeAction()
+		m.mode = modeResults
+		return m, nil
+	case "n", "N":
+		m.mode = modeSelect
+		return m, nil
+	}
+
+	return m, nil
+}
+
+func (m ManageModel) updateResultsMode(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyCtrlC, tea.KeyEsc, tea.KeyEnter:
+			m.confirmed = true
+			return m, tea.Quit
+		}
+		switch msg.String() {
+		case "q", "Q":
+			m.confirmed = true
+			return m, tea.Quit
+		}
+	}
+
+	return m, nil
+}
+
+func (m *ManageModel) executeAction() {
+	selected := m.SelectedItems()
+	m.results = make([]ActionResult, 0, len(selected))
+
+	for _, item := range selected {
+		result := ActionResult{
+			Item:    item,
+			Success: false,
+		}
+
+		if m.manager != nil {
+			var err error
+			if m.action == actionRestore {
+				err = m.manager.Restore(item.Name, m.force)
+			} else {
+				err = m.manager.Delete(item.Name)
+			}
+			result.Success = err == nil
+			result.Error = err
+		}
+
+		m.results = append(m.results, result)
+	}
 }
 
 func (m *ManageModel) filterItems() {
@@ -248,9 +388,20 @@ func fuzzyMatch(s, query string) bool {
 }
 
 func (m ManageModel) View() string {
+	switch m.mode {
+	case modeConfirm:
+		return m.viewConfirm()
+	case modeResults:
+		return m.viewResults()
+	default:
+		return m.viewSelect()
+	}
+}
+
+func (m ManageModel) viewSelect() string {
 	var b strings.Builder
 
-	b.WriteString(titleStyle.Render("🗑️  Restore from Trash"))
+	b.WriteString(titleStyle.Render("🗑️  Manage Trash"))
 	b.WriteString("\n")
 
 	if m.mode == modeSearch {
@@ -338,18 +489,107 @@ func (m ManageModel) View() string {
 	if m.mode == modeSearch {
 		selectedCount := len(m.selectedItems)
 		if selectedCount > 0 {
-			b.WriteString(helpStyle.Render(fmt.Sprintf("Esc clear • ↑/↓ nav • Tab select (%d) • Enter restore", selectedCount)))
+			b.WriteString(helpStyle.Render(fmt.Sprintf("Esc clear • ↑/↓ nav • Tab select (%d) • r restore • d delete", selectedCount)))
 		} else {
-			b.WriteString(helpStyle.Render("Esc clear/exit • ↑/↓ navigate • Tab select • Enter restore"))
+			b.WriteString(helpStyle.Render("Esc clear/exit • ↑/↓ navigate • Tab select • r restore • d delete"))
 		}
 	} else {
 		selectedCount := len(m.selectedItems)
 		if selectedCount > 0 {
-			b.WriteString(helpStyle.Render(fmt.Sprintf("↑/↓ navigate • Tab select (%d selected) • / search • Enter restore • Esc cancel", selectedCount)))
+			b.WriteString(helpStyle.Render(fmt.Sprintf("↑/↓ nav • Tab select (%d) • / search • r restore • d delete • Esc cancel", selectedCount)))
 		} else {
-			b.WriteString(helpStyle.Render("↑/↓ navigate • Tab select • / search • Enter restore • Esc cancel"))
+			b.WriteString(helpStyle.Render("↑/↓ navigate • Tab select • / search • r restore • d delete • Esc cancel"))
 		}
 	}
+
+	return b.String()
+}
+
+func (m ManageModel) viewConfirm() string {
+	var b strings.Builder
+
+	actionText := "restore"
+	actionColor := successStyle
+	if m.action == actionDelete {
+		actionText = "permanently delete"
+		actionColor = errorStyle
+	}
+
+	title := fmt.Sprintf("Confirm %s?", actionText)
+	b.WriteString(titleStyle.Render("🗑️  " + title))
+	b.WriteString("\n\n")
+
+	selected := m.SelectedItems()
+	b.WriteString(warningStyle.Render(fmt.Sprintf("You are about to %s %d item(s):", actionText, len(selected))))
+	b.WriteString("\n\n")
+
+	for i, item := range selected {
+		if i >= 10 {
+			b.WriteString(previewStyle.Render(fmt.Sprintf("  ... and %d more", len(selected)-i)))
+			b.WriteString("\n")
+			break
+		}
+		name := item.Name
+		if item.IsDir {
+			name = dirStyle.Render(name + "/")
+		}
+		b.WriteString(previewStyle.Render("  • " + name))
+		b.WriteString("\n")
+	}
+
+	b.WriteString("\n")
+	b.WriteString(confirmBoxStyle.Render(fmt.Sprintf(
+		"Press %s to confirm, %s to cancel",
+		actionColor.Render("y/Enter"),
+		helpStyle.Render("n/Esc"),
+	)))
+
+	return b.String()
+}
+
+func (m ManageModel) viewResults() string {
+	var b strings.Builder
+
+	actionText := "Restored"
+	if m.action == actionDelete {
+		actionText = "Deleted"
+	}
+
+	b.WriteString(titleStyle.Render(fmt.Sprintf("🗑️  %s Results", actionText)))
+	b.WriteString("\n\n")
+
+	successCount := 0
+	failCount := 0
+
+	for _, result := range m.results {
+		name := result.Item.Name
+		if result.Item.IsDir {
+			name = dirStyle.Render(name + "/")
+		}
+
+		if result.Success {
+			successCount++
+			b.WriteString(successStyle.Render("✓ " + name))
+			b.WriteString("\n")
+		} else {
+			failCount++
+			b.WriteString(errorStyle.Render("✗ " + name))
+			if result.Error != nil {
+				b.WriteString(errorStyle.Render(": " + result.Error.Error()))
+			}
+			b.WriteString("\n")
+		}
+	}
+
+	b.WriteString("\n")
+	if failCount == 0 {
+		b.WriteString(successStyle.Render(fmt.Sprintf("Successfully %s %d item(s)", strings.ToLower(actionText), successCount)))
+	} else {
+		b.WriteString(warningStyle.Render(fmt.Sprintf("%d succeeded, %d failed", successCount, failCount)))
+	}
+
+	b.WriteString("\n\n")
+	b.WriteString(helpStyle.Render("Press Enter or q to exit"))
 
 	return b.String()
 }
@@ -393,6 +633,16 @@ func (m ManageModel) Cancelled() bool {
 // Force returns whether to overwrite existing files
 func (m ManageModel) Force() bool {
 	return m.force
+}
+
+// Results returns the action results
+func (m ManageModel) Results() []ActionResult {
+	return m.results
+}
+
+// Action returns the selected action
+func (m ManageModel) Action() actionType {
+	return m.action
 }
 
 func min(a, b int) int {

@@ -50,15 +50,15 @@ Output:
 2  old_backup/       45MB    2026-03-04 18:22    /home/user/backups/old_backup
 ```
 
-### Restore files
+### Manage trash files
 
 ```bash
-trs restore              # Interactive TUI with fuzzy search
-trs restore config.json  # Restore by name
-trs restore 1            # Restore by index (from list)
-trs restore --last       # Restore most recently trashed file
-trs restore -f file.txt  # Force overwrite existing file
-trs restore --json       # JSON output
+trs manage              # Interactive TUI with fuzzy search
+trs manage config.json  # Restore by name
+trs manage 1            # Restore by index (from list)
+trs manage --last       # Restore most recently trashed file
+trs manage -f file.txt  # Force overwrite existing file
+trs manage --json       # JSON output
 ```
 
 ### Empty trash
@@ -114,11 +114,14 @@ trs completion powershell # PowerShell
 - Cross-device moves handled automatically
 - Compatible with desktop environment trash
 
-### Interactive Restore TUI
+### Interactive TUI
 
-The `trs restore` command launches an interactive terminal UI:
+The `trs manage` command launches an interactive terminal UI:
 - Fuzzy search across file names and original paths
 - Arrow key navigation with live preview
+- Multi-select files with Tab/Space
+- Press `r` to restore or `d` to permanently delete selected files
+- Confirmation screen before action
 - Works in any terminal
 
 ### Security
