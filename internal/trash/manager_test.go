@@ -776,3 +776,48 @@ func TestManager_Delete(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, items, 0)
 }
+
+func TestManager_DeleteDirectory(t *testing.T) {
+	tmpHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", filepath.Join(tmpHome, ".local", "share"))
+	t.Setenv("HOME", tmpHome)
+
+	mgr, err := NewManager()
+	require.NoError(t, err)
+
+	// Create a test directory with files and trash it
+	testDir := filepath.Join(tmpHome, "testdir")
+	require.NoError(t, os.MkdirAll(testDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(testDir, "file1.txt"), []byte("content1"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(testDir, "file2.txt"), []byte("content2"), 0644))
+	require.NoError(t, mgr.Move(testDir))
+
+	// Verify it's in trash
+	items, err := mgr.List()
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	require.True(t, items[0].IsDir)
+
+	// Delete from trash
+	err = mgr.Delete("testdir")
+	require.NoError(t, err)
+
+	// Verify it's gone
+	items, err = mgr.List()
+	require.NoError(t, err)
+	require.Len(t, items, 0)
+}
+
+func TestManager_DeleteNotFound(t *testing.T) {
+	tmpHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", filepath.Join(tmpHome, ".local", "share"))
+	t.Setenv("HOME", tmpHome)
+
+	mgr, err := NewManager()
+	require.NoError(t, err)
+
+	// Try to delete non-existent file
+	err = mgr.Delete("nonexistent.txt")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "file not in trash")
+}
