@@ -18,8 +18,8 @@ const (
 	modeSearch
 )
 
-// RestoreModel is the TUI model for restore selection
-type RestoreModel struct {
+// ManageModel is the TUI model for trash management
+type ManageModel struct {
 	items         []trash.TrashItem
 	filtered      []trash.TrashItem
 	selected      int
@@ -68,14 +68,14 @@ func itemKey(item trash.TrashItem) string {
 	return item.Name + "|" + item.OriginalPath
 }
 
-// NewRestoreModel creates a new restore TUI model
-func NewRestoreModel(items []trash.TrashItem, force bool) RestoreModel {
+// NewManageModel creates a new manage TUI model
+func NewManageModel(items []trash.TrashItem, force bool) ManageModel {
 	ti := textinput.New()
 	ti.Placeholder = "Search..."
 	ti.CharLimit = 100
 	ti.Width = 50
 
-	return RestoreModel{
+	return ManageModel{
 		items:         items,
 		filtered:      items,
 		search:        ti,
@@ -86,11 +86,11 @@ func NewRestoreModel(items []trash.TrashItem, force bool) RestoreModel {
 	}
 }
 
-func (m RestoreModel) Init() tea.Cmd {
+func (m ManageModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m RestoreModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m ManageModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch m.mode {
@@ -104,7 +104,7 @@ func (m RestoreModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m RestoreModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m ManageModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.Type {
 	case tea.KeyEsc:
 		if m.search.Value() != "" {
@@ -168,7 +168,7 @@ func (m RestoreModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m RestoreModel) updateSelectMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m ManageModel) updateSelectMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.Type {
 	case tea.KeyCtrlC, tea.KeyEsc:
 		m.cancelled = true
@@ -216,7 +216,7 @@ func (m RestoreModel) updateSelectMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *RestoreModel) filterItems() {
+func (m *ManageModel) filterItems() {
 	query := strings.ToLower(m.search.Value())
 	if query == "" {
 		m.filtered = m.items
@@ -247,7 +247,7 @@ func fuzzyMatch(s, query string) bool {
 	return qi == len(query)
 }
 
-func (m RestoreModel) View() string {
+func (m ManageModel) View() string {
 	var b strings.Builder
 
 	b.WriteString(titleStyle.Render("🗑️  Restore from Trash"))
@@ -355,7 +355,7 @@ func (m RestoreModel) View() string {
 }
 
 // SelectedItem returns the selected item (for single selection compatibility)
-func (m RestoreModel) SelectedItem() *trash.TrashItem {
+func (m ManageModel) SelectedItem() *trash.TrashItem {
 	if len(m.filtered) > 0 && m.selected < len(m.filtered) {
 		return &m.filtered[m.selected]
 	}
@@ -363,7 +363,7 @@ func (m RestoreModel) SelectedItem() *trash.TrashItem {
 }
 
 // SelectedItems returns all selected items for multi-restore
-func (m RestoreModel) SelectedItems() []trash.TrashItem {
+func (m ManageModel) SelectedItems() []trash.TrashItem {
 	if len(m.selectedItems) == 0 {
 		if item := m.SelectedItem(); item != nil {
 			return []trash.TrashItem{*item}
@@ -381,17 +381,17 @@ func (m RestoreModel) SelectedItems() []trash.TrashItem {
 }
 
 // Confirmed returns whether user confirmed selection
-func (m RestoreModel) Confirmed() bool {
+func (m ManageModel) Confirmed() bool {
 	return m.confirmed
 }
 
 // Cancelled returns whether user cancelled
-func (m RestoreModel) Cancelled() bool {
+func (m ManageModel) Cancelled() bool {
 	return m.cancelled
 }
 
 // Force returns whether to overwrite existing files
-func (m RestoreModel) Force() bool {
+func (m ManageModel) Force() bool {
 	return m.force
 }
 
