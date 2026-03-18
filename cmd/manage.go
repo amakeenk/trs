@@ -129,15 +129,8 @@ func manageInteractive(mgr *trash.Manager) {
 		return
 	}
 
-	if !result.Confirmed() {
-		fmt.Println("Cancelled")
-		return
-	}
-
 	if flagJSON {
 		outputResultsJSON(result.Results())
-	} else {
-		outputResults(result.Results())
 	}
 }
 
@@ -151,20 +144,19 @@ func outputResults(results []tui.ActionResult) {
 	failCount := 0
 
 	for _, r := range results {
-		name := r.Item.Name
-		if r.Item.IsDir {
-			name += "/"
-		}
-
 		if r.Success {
 			successCount++
 			actionText := "Restored"
-			if r.Item.IsDir {
-				actionText = "Restored"
+			if r.Action == tui.ActionDelete {
+				actionText = "Deleted"
 			}
-			fmt.Printf("\x1b[32m%s: %s → %s\x1b[0m\n", actionText, name, r.Item.OriginalPath)
+			fmt.Printf("\x1b[32m%s: %s\x1b[0m\n", actionText, r.Item.OriginalPath)
 		} else {
 			failCount++
+			name := r.Item.Name
+			if r.Item.IsDir {
+				name += "/"
+			}
 			errMsg := ""
 			if r.Error != nil {
 				errMsg = r.Error.Error()
@@ -184,9 +176,14 @@ func outputResults(results []tui.ActionResult) {
 func outputResultsJSON(results []tui.ActionResult) {
 	output := make([]ManageResult, len(results))
 	for i, r := range results {
+		actionStr := "restore"
+		if r.Action == tui.ActionDelete {
+			actionStr = "delete"
+		}
 		output[i] = ManageResult{
 			Name:     r.Item.Name,
 			Original: r.Item.OriginalPath,
+			Action:   actionStr,
 			Success:  r.Success,
 		}
 		if r.Error != nil {

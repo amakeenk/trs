@@ -20,16 +20,18 @@ const (
 	modeResults
 )
 
-type actionType int
+// ActionType represents the type of action performed
+type ActionType int
 
 const (
-	actionRestore actionType = iota
-	actionDelete
+	ActionRestore ActionType = iota
+	ActionDelete
 )
 
 // ActionResult represents the result of an action on a single item
 type ActionResult struct {
 	Item    trash.TrashItem
+	Action  ActionType
 	Success bool
 	Error   error
 }
@@ -42,7 +44,7 @@ type ManageModel struct {
 	selectedItems map[string]bool
 	search        textinput.Model
 	mode          mode
-	action        actionType
+	action        ActionType
 	confirmed     bool
 	cancelled     bool
 	force         bool
@@ -204,13 +206,13 @@ func (m ManageModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "r":
 		if len(m.selectedItems) > 0 {
-			m.action = actionRestore
+			m.action = ActionRestore
 			m.mode = modeConfirm
 			return m, nil
 		}
 	case "d":
 		if len(m.selectedItems) > 0 {
-			m.action = actionDelete
+			m.action = ActionDelete
 			m.mode = modeConfirm
 			return m, nil
 		}
@@ -272,13 +274,13 @@ func (m ManageModel) updateSelectMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "r":
 		if len(m.selectedItems) > 0 {
-			m.action = actionRestore
+			m.action = ActionRestore
 			m.mode = modeConfirm
 			return m, nil
 		}
 	case "d":
 		if len(m.selectedItems) > 0 {
-			m.action = actionDelete
+			m.action = ActionDelete
 			m.mode = modeConfirm
 			return m, nil
 		}
@@ -338,12 +340,13 @@ func (m *ManageModel) executeAction() {
 	for _, item := range selected {
 		result := ActionResult{
 			Item:    item,
+			Action:  m.action,
 			Success: false,
 		}
 
 		if m.manager != nil {
 			var err error
-			if m.action == actionRestore {
+			if m.action == ActionRestore {
 				err = m.manager.Restore(item.Name, m.force)
 			} else {
 				err = m.manager.Delete(item.Name)
@@ -510,7 +513,7 @@ func (m ManageModel) viewConfirm() string {
 
 	actionText := "restore"
 	actionColor := successStyle
-	if m.action == actionDelete {
+	if m.action == ActionDelete {
 		actionText = "permanently delete"
 		actionColor = errorStyle
 	}
@@ -551,7 +554,7 @@ func (m ManageModel) viewResults() string {
 	var b strings.Builder
 
 	actionText := "Restored"
-	if m.action == actionDelete {
+	if m.action == ActionDelete {
 		actionText = "Deleted"
 	}
 
@@ -562,18 +565,21 @@ func (m ManageModel) viewResults() string {
 	failCount := 0
 
 	for _, result := range m.results {
-		name := result.Item.Name
-		if result.Item.IsDir {
-			name = dirStyle.Render(name + "/")
+		displayPath := result.Item.OriginalPath
+		if displayPath == "" {
+			displayPath = result.Item.Name
+		}
+		if result.Item.IsDir && !strings.HasSuffix(displayPath, "/") {
+			displayPath = dirStyle.Render(displayPath + "/")
 		}
 
 		if result.Success {
 			successCount++
-			b.WriteString(successStyle.Render("✓ " + name))
+			b.WriteString(successStyle.Render("✓ " + displayPath))
 			b.WriteString("\n")
 		} else {
 			failCount++
-			b.WriteString(errorStyle.Render("✗ " + name))
+			b.WriteString(errorStyle.Render("✗ " + displayPath))
 			if result.Error != nil {
 				b.WriteString(errorStyle.Render(": " + result.Error.Error()))
 			}
@@ -641,7 +647,7 @@ func (m ManageModel) Results() []ActionResult {
 }
 
 // Action returns the selected action
-func (m ManageModel) Action() actionType {
+func (m ManageModel) Action() ActionType {
 	return m.action
 }
 
