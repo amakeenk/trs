@@ -61,6 +61,12 @@ trs manage -f file.txt  # Force overwrite existing file
 trs manage --json       # JSON output
 ```
 
+TUI features:
+- Multi-select with Tab/Space, arrow navigation
+- Fuzzy search across names and original paths
+- Press `r` to restore or `d` to permanently delete selected files
+- Results show full original paths
+
 ### Empty trash
 
 ```bash
