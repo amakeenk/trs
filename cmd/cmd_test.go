@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"altlinux.space/amakeenk/trs/internal/trash"
+	"altlinux.space/amakeenk/trs/internal/tui"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -3073,4 +3074,270 @@ func TestRestoreMultipleJSONWithErrors(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(output), &results))
 	require.Len(t, results, 1)
 	assert.NotEmpty(t, results[0].Error)
+}
+
+func TestOutputResults(t *testing.T) {
+	items := []trash.TrashItem{
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", Size: 100, IsDir: false},
+		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", Size: 200, IsDir: true},
+	}
+
+	t.Run("empty results", func(t *testing.T) {
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		outputResults([]tui.ActionResult{})
+
+		os.Stdout = oldStdout
+		w.Close()
+
+		var buf bytes.Buffer
+		buf.ReadFrom(r)
+		r.Close()
+		output := buf.String()
+
+		assert.Contains(t, output, "No action taken")
+	})
+
+	t.Run("successful restore results", func(t *testing.T) {
+		results := []tui.ActionResult{
+			{Item: items[0], Action: tui.ActionRestore, Success: true, Error: nil},
+			{Item: items[1], Action: tui.ActionRestore, Success: true, Error: nil},
+		}
+
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		outputResults(results)
+
+		os.Stdout = oldStdout
+		w.Close()
+
+		var buf bytes.Buffer
+		buf.ReadFrom(r)
+		r.Close()
+		output := buf.String()
+
+		assert.Contains(t, output, "Restored: /path/to/file1.txt")
+		assert.Contains(t, output, "Restored: /path/to/file2.txt")
+		assert.Contains(t, output, "Successfully processed 2 items")
+	})
+
+	t.Run("successful delete results", func(t *testing.T) {
+		results := []tui.ActionResult{
+			{Item: items[0], Action: tui.ActionDelete, Success: true, Error: nil},
+		}
+
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		outputResults(results)
+
+		os.Stdout = oldStdout
+		w.Close()
+
+		var buf bytes.Buffer
+		buf.ReadFrom(r)
+		r.Close()
+		output := buf.String()
+
+		assert.Contains(t, output, "Deleted: /path/to/file1.txt")
+	})
+
+	t.Run("failed results", func(t *testing.T) {
+		results := []tui.ActionResult{
+			{Item: items[0], Action: tui.ActionRestore, Success: false, Error: fmt.Errorf("test error")},
+		}
+
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		outputResults(results)
+
+		os.Stdout = oldStdout
+		w.Close()
+
+		var buf bytes.Buffer
+		buf.ReadFrom(r)
+		r.Close()
+		output := buf.String()
+
+		assert.Contains(t, output, "Error: file1.txt - test error")
+		assert.Contains(t, output, "Failed: 1 items")
+	})
+
+	t.Run("mixed results", func(t *testing.T) {
+		results := []tui.ActionResult{
+			{Item: items[0], Action: tui.ActionRestore, Success: true, Error: nil},
+			{Item: items[1], Action: tui.ActionRestore, Success: false, Error: fmt.Errorf("failed")},
+		}
+
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		outputResults(results)
+
+		os.Stdout = oldStdout
+		w.Close()
+
+		var buf bytes.Buffer
+		buf.ReadFrom(r)
+		r.Close()
+		output := buf.String()
+
+		assert.Contains(t, output, "Restored: /path/to/file1.txt")
+		assert.Contains(t, output, "Error: file2.txt/ - failed")
+		assert.Contains(t, output, "Failed: 1 items")
+	})
+
+	t.Run("failed result with nil error", func(t *testing.T) {
+		results := []tui.ActionResult{
+			{Item: items[0], Action: tui.ActionRestore, Success: false, Error: nil},
+		}
+
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		outputResults(results)
+
+		os.Stdout = oldStdout
+		w.Close()
+
+		var buf bytes.Buffer
+		buf.ReadFrom(r)
+		r.Close()
+		output := buf.String()
+
+		assert.Contains(t, output, "Error: file1.txt -")
+	})
+}
+
+func TestOutputResultsJSON(t *testing.T) {
+	items := []trash.TrashItem{
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", Size: 100, IsDir: false},
+		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", Size: 200, IsDir: true},
+	}
+
+	t.Run("restore results", func(t *testing.T) {
+		results := []tui.ActionResult{
+			{Item: items[0], Action: tui.ActionRestore, Success: true, Error: nil},
+		}
+
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		outputResultsJSON(results)
+
+		os.Stdout = oldStdout
+		w.Close()
+
+		var buf bytes.Buffer
+		buf.ReadFrom(r)
+		r.Close()
+		output := buf.String()
+
+		var jsonResults []ManageResult
+		require.NoError(t, json.Unmarshal([]byte(output), &jsonResults))
+		require.Len(t, jsonResults, 1)
+		assert.Equal(t, "file1.txt", jsonResults[0].Name)
+		assert.Equal(t, "/path/to/file1.txt", jsonResults[0].Original)
+		assert.Equal(t, "restore", jsonResults[0].Action)
+		assert.True(t, jsonResults[0].Success)
+		assert.Empty(t, jsonResults[0].Error)
+	})
+
+	t.Run("delete results", func(t *testing.T) {
+		results := []tui.ActionResult{
+			{Item: items[0], Action: tui.ActionDelete, Success: true, Error: nil},
+		}
+
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		outputResultsJSON(results)
+
+		os.Stdout = oldStdout
+		w.Close()
+
+		var buf bytes.Buffer
+		buf.ReadFrom(r)
+		r.Close()
+		output := buf.String()
+
+		var jsonResults []ManageResult
+		require.NoError(t, json.Unmarshal([]byte(output), &jsonResults))
+		require.Len(t, jsonResults, 1)
+		assert.Equal(t, "delete", jsonResults[0].Action)
+	})
+
+	t.Run("failed results with error", func(t *testing.T) {
+		results := []tui.ActionResult{
+			{Item: items[0], Action: tui.ActionRestore, Success: false, Error: fmt.Errorf("test error")},
+		}
+
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		outputResultsJSON(results)
+
+		os.Stdout = oldStdout
+		w.Close()
+
+		var buf bytes.Buffer
+		buf.ReadFrom(r)
+		r.Close()
+		output := buf.String()
+
+		var jsonResults []ManageResult
+		require.NoError(t, json.Unmarshal([]byte(output), &jsonResults))
+		require.Len(t, jsonResults, 1)
+		assert.False(t, jsonResults[0].Success)
+		assert.Contains(t, jsonResults[0].Error, "test error")
+	})
+
+	t.Run("multiple results", func(t *testing.T) {
+		results := []tui.ActionResult{
+			{Item: items[0], Action: tui.ActionRestore, Success: true, Error: nil},
+			{Item: items[1], Action: tui.ActionDelete, Success: false, Error: fmt.Errorf("delete failed")},
+		}
+
+		oldStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+
+		outputResultsJSON(results)
+
+		os.Stdout = oldStdout
+		w.Close()
+
+		var buf bytes.Buffer
+		buf.ReadFrom(r)
+		r.Close()
+		output := buf.String()
+
+		var jsonResults []ManageResult
+		require.NoError(t, json.Unmarshal([]byte(output), &jsonResults))
+		require.Len(t, jsonResults, 2)
+		assert.Equal(t, "restore", jsonResults[0].Action)
+		assert.Equal(t, "delete", jsonResults[1].Action)
+		assert.True(t, jsonResults[0].Success)
+		assert.False(t, jsonResults[1].Success)
+	})
+}
+
+func TestNewRestoreCmd(t *testing.T) {
+	cmd := NewRestoreCmd()
+	require.NotNil(t, cmd)
+	assert.Contains(t, cmd.Use, "manage")
+	assert.NotNil(t, cmd.Flags().Lookup("last"))
+	assert.NotNil(t, cmd.Flags().Lookup("force"))
 }

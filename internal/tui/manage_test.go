@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -629,4 +631,557 @@ func TestManageModelUpdate(t *testing.T) {
 		assert.Equal(t, model, m)
 		assert.Nil(t, cmd)
 	})
+}
+
+func TestUpdateConfirmMode(t *testing.T) {
+	items := []trash.TrashItem{
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: time.Now(), Size: 200, IsDir: false},
+	}
+
+	t.Run("Escape cancels confirmation", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeConfirm
+		model.action = ActionRestore
+
+		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+		m := updatedModel.(ManageModel)
+		assert.Equal(t, modeSelect, m.mode)
+	})
+
+	t.Run("Ctrl+C cancels confirmation", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeConfirm
+		model.action = ActionRestore
+
+		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+		m := updatedModel.(ManageModel)
+		assert.Equal(t, modeSelect, m.mode)
+	})
+
+	t.Run("Enter confirms action", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeConfirm
+		model.action = ActionRestore
+		model.selectedItems[itemKey(items[0])] = true
+
+		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+		m := updatedModel.(ManageModel)
+		assert.Equal(t, modeResults, m.mode)
+		assert.Len(t, m.results, 1)
+	})
+
+	t.Run("y confirms action", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeConfirm
+		model.action = ActionRestore
+		model.selectedItems[itemKey(items[0])] = true
+
+		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+		m := updatedModel.(ManageModel)
+		assert.Equal(t, modeResults, m.mode)
+	})
+
+	t.Run("Y confirms action", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeConfirm
+		model.action = ActionRestore
+		model.selectedItems[itemKey(items[0])] = true
+
+		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'Y'}})
+		m := updatedModel.(ManageModel)
+		assert.Equal(t, modeResults, m.mode)
+	})
+
+	t.Run("n cancels action", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeConfirm
+		model.action = ActionRestore
+
+		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+		m := updatedModel.(ManageModel)
+		assert.Equal(t, modeSelect, m.mode)
+	})
+
+	t.Run("N cancels action", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeConfirm
+		model.action = ActionRestore
+
+		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'N'}})
+		m := updatedModel.(ManageModel)
+		assert.Equal(t, modeSelect, m.mode)
+	})
+
+	t.Run("unknown key does nothing", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeConfirm
+		model.action = ActionRestore
+
+		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+		m := updatedModel.(ManageModel)
+		assert.Equal(t, modeConfirm, m.mode)
+	})
+}
+
+func TestUpdateResultsMode(t *testing.T) {
+	items := []trash.TrashItem{
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+	}
+
+	t.Run("Enter exits", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeResults
+
+		updatedModel, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+		m := updatedModel.(ManageModel)
+		assert.True(t, m.confirmed)
+		assert.NotNil(t, cmd)
+	})
+
+	t.Run("Escape exits", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeResults
+
+		updatedModel, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+		m := updatedModel.(ManageModel)
+		assert.True(t, m.confirmed)
+		assert.NotNil(t, cmd)
+	})
+
+	t.Run("Ctrl+C exits", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeResults
+
+		updatedModel, cmd := model.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+		m := updatedModel.(ManageModel)
+		assert.True(t, m.confirmed)
+		assert.NotNil(t, cmd)
+	})
+
+	t.Run("q exits", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeResults
+
+		updatedModel, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
+		m := updatedModel.(ManageModel)
+		assert.True(t, m.confirmed)
+		assert.NotNil(t, cmd)
+	})
+
+	t.Run("Q exits", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeResults
+
+		updatedModel, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'Q'}})
+		m := updatedModel.(ManageModel)
+		assert.True(t, m.confirmed)
+		assert.NotNil(t, cmd)
+	})
+
+	t.Run("unknown key does nothing", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeResults
+
+		updatedModel, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+		m := updatedModel.(ManageModel)
+		assert.False(t, m.confirmed)
+		assert.Nil(t, cmd)
+	})
+
+	t.Run("non-key message does nothing", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeResults
+
+		updatedModel, cmd := model.Update(nil)
+		m := updatedModel.(ManageModel)
+		assert.False(t, m.confirmed)
+		assert.Nil(t, cmd)
+	})
+}
+
+func TestExecuteAction(t *testing.T) {
+	items := []trash.TrashItem{
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: time.Now(), Size: 200, IsDir: true},
+	}
+
+	t.Run("execute with nil manager", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.selectedItems[itemKey(items[0])] = true
+		model.action = ActionRestore
+
+		model.executeAction()
+
+		require.Len(t, model.results, 1)
+		assert.False(t, model.results[0].Success)
+		assert.Equal(t, items[0], model.results[0].Item)
+	})
+
+	t.Run("execute restore action", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.selectedItems[itemKey(items[0])] = true
+		model.action = ActionRestore
+
+		model.executeAction()
+
+		require.Len(t, model.results, 1)
+		assert.Equal(t, ActionRestore, model.results[0].Action)
+	})
+
+	t.Run("execute delete action", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.selectedItems[itemKey(items[0])] = true
+		model.action = ActionDelete
+
+		model.executeAction()
+
+		require.Len(t, model.results, 1)
+		assert.Equal(t, ActionDelete, model.results[0].Action)
+	})
+
+	t.Run("execute multiple items", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.selectedItems[itemKey(items[0])] = true
+		model.selectedItems[itemKey(items[1])] = true
+		model.action = ActionRestore
+
+		model.executeAction()
+
+		require.Len(t, model.results, 2)
+	})
+
+	t.Run("execute with no selected items", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.action = ActionRestore
+
+		model.executeAction()
+
+		assert.Len(t, model.results, 1)
+	})
+}
+
+func TestExecuteActionWithManager(t *testing.T) {
+	tmpHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", tmpHome+"/.local/share")
+	t.Setenv("HOME", tmpHome)
+
+	mgr, err := trash.NewManager()
+	require.NoError(t, err)
+
+	tmpDir := t.TempDir()
+	file := tmpDir + "/test_file.txt"
+	require.NoError(t, os.WriteFile(file, []byte("content"), 0644))
+
+	require.NoError(t, mgr.Move(file))
+
+	items, err := mgr.List()
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+
+	t.Run("restore with manager", func(t *testing.T) {
+		model := NewManageModel(items, false, mgr)
+		model.selectedItems[itemKey(items[0])] = true
+		model.action = ActionRestore
+
+		model.executeAction()
+
+		require.Len(t, model.results, 1)
+		assert.True(t, model.results[0].Success)
+		assert.NoError(t, model.results[0].Error)
+	})
+
+	t.Run("delete with manager", func(t *testing.T) {
+		file2 := tmpDir + "/test_file2.txt"
+		require.NoError(t, os.WriteFile(file2, []byte("content2"), 0644))
+		require.NoError(t, mgr.Move(file2))
+
+		items2, err := mgr.List()
+		require.NoError(t, err)
+		require.Len(t, items2, 1)
+
+		model := NewManageModel(items2, false, mgr)
+		model.selectedItems[itemKey(items2[0])] = true
+		model.action = ActionDelete
+
+		model.executeAction()
+
+		require.Len(t, model.results, 1)
+		assert.True(t, model.results[0].Success)
+		assert.NoError(t, model.results[0].Error)
+	})
+}
+
+func TestViewConfirm(t *testing.T) {
+	items := []trash.TrashItem{
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: time.Now(), Size: 200, IsDir: true},
+	}
+
+	t.Run("restore confirmation", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeConfirm
+		model.action = ActionRestore
+		model.selectedItems[itemKey(items[0])] = true
+
+		view := model.viewConfirm()
+
+		assert.Contains(t, view, "Confirm restore?")
+		assert.Contains(t, view, "restore 1 item")
+		assert.Contains(t, view, "file1.txt")
+		assert.Contains(t, view, "y/Enter")
+	})
+
+	t.Run("delete confirmation", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeConfirm
+		model.action = ActionDelete
+		model.selectedItems[itemKey(items[0])] = true
+
+		view := model.viewConfirm()
+
+		assert.Contains(t, view, "Confirm permanently delete?")
+		assert.Contains(t, view, "permanently delete")
+		assert.Contains(t, view, "file1.txt")
+	})
+
+	t.Run("multiple items", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeConfirm
+		model.action = ActionRestore
+		model.selectedItems[itemKey(items[0])] = true
+		model.selectedItems[itemKey(items[1])] = true
+
+		view := model.viewConfirm()
+
+		assert.Contains(t, view, "2 item")
+		assert.Contains(t, view, "file1.txt")
+		assert.Contains(t, view, "file2.txt")
+	})
+
+	t.Run("more than 10 items", func(t *testing.T) {
+		manyItems := make([]trash.TrashItem, 15)
+		for i := 0; i < 15; i++ {
+			manyItems[i] = trash.TrashItem{
+				Name:         fmt.Sprintf("file%d.txt", i),
+				OriginalPath: fmt.Sprintf("/path/to/file%d.txt", i),
+				DeletionDate: time.Now(),
+				Size:         100,
+				IsDir:        false,
+			}
+		}
+
+		model := NewManageModel(manyItems, false, nil)
+		model.mode = modeConfirm
+		model.action = ActionRestore
+		for _, item := range manyItems {
+			model.selectedItems[itemKey(item)] = true
+		}
+
+		view := model.viewConfirm()
+
+		assert.Contains(t, view, "15 item")
+		assert.Contains(t, view, "... and 5 more")
+	})
+
+	t.Run("directory indicator", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeConfirm
+		model.action = ActionRestore
+		model.selectedItems[itemKey(items[1])] = true
+
+		view := model.viewConfirm()
+
+		assert.Contains(t, view, "file2.txt")
+	})
+}
+
+func TestViewResults(t *testing.T) {
+	items := []trash.TrashItem{
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: time.Now(), Size: 200, IsDir: true},
+	}
+
+	t.Run("successful restore results", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeResults
+		model.action = ActionRestore
+		model.results = []ActionResult{
+			{Item: items[0], Action: ActionRestore, Success: true, Error: nil},
+		}
+
+		view := model.viewResults()
+
+		assert.Contains(t, view, "Restored Results")
+		assert.Contains(t, view, "/path/to/file1.txt")
+		assert.Contains(t, view, "Successfully restored 1 item")
+	})
+
+	t.Run("successful delete results", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeResults
+		model.action = ActionDelete
+		model.results = []ActionResult{
+			{Item: items[0], Action: ActionDelete, Success: true, Error: nil},
+		}
+
+		view := model.viewResults()
+
+		assert.Contains(t, view, "Deleted Results")
+		assert.Contains(t, view, "Successfully deleted 1 item")
+	})
+
+	t.Run("failed results", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeResults
+		model.action = ActionRestore
+		model.results = []ActionResult{
+			{Item: items[0], Action: ActionRestore, Success: false, Error: fmt.Errorf("test error")},
+		}
+
+		view := model.viewResults()
+
+		assert.Contains(t, view, "0 succeeded, 1 failed")
+		assert.Contains(t, view, "test error")
+	})
+
+	t.Run("mixed results", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeResults
+		model.action = ActionRestore
+		model.results = []ActionResult{
+			{Item: items[0], Action: ActionRestore, Success: true, Error: nil},
+			{Item: items[1], Action: ActionRestore, Success: false, Error: fmt.Errorf("failed")},
+		}
+
+		view := model.viewResults()
+
+		assert.Contains(t, view, "1 succeeded, 1 failed")
+	})
+
+	t.Run("directory with path display", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeResults
+		model.action = ActionRestore
+		model.results = []ActionResult{
+			{Item: items[1], Action: ActionRestore, Success: true, Error: nil},
+		}
+
+		view := model.viewResults()
+
+		assert.Contains(t, view, "/path/to/file2.txt")
+	})
+
+	t.Run("item with empty original path uses name", func(t *testing.T) {
+		emptyPathItem := trash.TrashItem{
+			Name:         "noname.txt",
+			OriginalPath: "",
+			DeletionDate: time.Now(),
+			Size:         100,
+			IsDir:        false,
+		}
+
+		model := NewManageModel([]trash.TrashItem{emptyPathItem}, false, nil)
+		model.mode = modeResults
+		model.action = ActionRestore
+		model.results = []ActionResult{
+			{Item: emptyPathItem, Action: ActionRestore, Success: true, Error: nil},
+		}
+
+		view := model.viewResults()
+
+		assert.Contains(t, view, "noname.txt")
+	})
+
+	t.Run("exit prompt", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeResults
+		model.action = ActionRestore
+		model.results = []ActionResult{
+			{Item: items[0], Action: ActionRestore, Success: true, Error: nil},
+		}
+
+		view := model.viewResults()
+
+		assert.Contains(t, view, "Press Enter or q to exit")
+	})
+}
+
+func TestResults(t *testing.T) {
+	items := []trash.TrashItem{
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+	}
+
+	t.Run("returns results", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.results = []ActionResult{
+			{Item: items[0], Action: ActionRestore, Success: true, Error: nil},
+		}
+
+		results := model.Results()
+		require.Len(t, results, 1)
+		assert.Equal(t, items[0], results[0].Item)
+		assert.True(t, results[0].Success)
+	})
+
+	t.Run("returns empty slice when no results", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+
+		results := model.Results()
+		assert.Empty(t, results)
+	})
+}
+
+func TestAction(t *testing.T) {
+	items := []trash.TrashItem{
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+	}
+
+	t.Run("returns restore action", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.action = ActionRestore
+
+		assert.Equal(t, ActionRestore, model.Action())
+	})
+
+	t.Run("returns delete action", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.action = ActionDelete
+
+		assert.Equal(t, ActionDelete, model.Action())
+	})
+
+	t.Run("default action is zero", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+
+		assert.Equal(t, ActionType(0), model.Action())
+	})
+}
+
+func TestManageModelUpdateConfirmWithR(t *testing.T) {
+	items := []trash.TrashItem{
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+	}
+
+	model := NewManageModel(items, false, nil)
+	model.mode = modeConfirm
+	model.action = ActionRestore
+
+	updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	m := updatedModel.(ManageModel)
+	assert.Equal(t, modeConfirm, m.mode)
+}
+
+func TestManageModelUpdateResultsNonKeyMsg(t *testing.T) {
+	items := []trash.TrashItem{
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+	}
+
+	model := NewManageModel(items, false, nil)
+	model.mode = modeResults
+
+	updatedModel, cmd := model.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	m := updatedModel.(ManageModel)
+	assert.False(t, m.confirmed)
+	assert.Nil(t, cmd)
 }
