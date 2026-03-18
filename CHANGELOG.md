@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-03-18
+
+### Added
+- Manage command with delete functionality - permanently delete files from trash via TUI
+- Delete method in trash manager for permanent file removal
+
+### Changed
+- Show full original path in TUI results view
+- Rename restore.go to manage.go to reflect expanded functionality
+
+### Fixed
+- Exit silently when user cancels in TUI results mode
+
+### Security
+- Added tests for Delete method covering directory and not found cases
+
 ## [0.6.0] - 2026-03-16
 
 ### Added
@@ -114,7 +130,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - github.com/spf13/cobra - CLI framework
 - github.com/stretchr/testify - Testing assertions
 
-[Unreleased]: https://altlinux.space/amakeenk/trs/compare/v0.6.0...HEAD
+[Unreleased]: https://altlinux.space/amakeenk/trs/compare/v0.7.0...HEAD
+[0.7.0]: https://altlinux.space/amakeenk/trs/compare/v0.6.0...v0.7.0
 [0.6.0]: https://altlinux.space/amakeenk/trs/compare/v0.5.0...v0.6.0
 [0.5.0]: https://altlinux.space/amakeenk/trs/compare/v0.4.2...v0.5.0
 [0.4.2]: https://altlinux.space/amakeenk/trs/compare/v0.4.1...v0.4.2
