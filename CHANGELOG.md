@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-03-28
+
+### Fixed
+- Limit input size in interactive prompt for empty command
+- Correct defer cleanup in `copyFile` to prevent resource leaks
+- Reject negative `--days` at CLI level in empty command
+- Use RFC3339 for DeletionDate with timezone in trashinfo
+- Reject negative days in `EmptyOlderThan`
+- Prevent `GetAllTrashDirs` from blocking on unresponsive mounts
+
+### Security
+- Input size limiting prevents DoS via oversized interactive input
+- Rejecting negative values prevents unexpected behavior in age-based operations
+
 ## [0.7.0] - 2026-03-18
 
 ### Added
@@ -130,7 +144,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - github.com/spf13/cobra - CLI framework
 - github.com/stretchr/testify - Testing assertions
 
-[Unreleased]: https://altlinux.space/amakeenk/trs/compare/v0.7.0...HEAD
+[Unreleased]: https://altlinux.space/amakeenk/trs/compare/v0.8.0...HEAD
+[0.8.0]: https://altlinux.space/amakeenk/trs/compare/v0.7.0...v0.8.0
 [0.7.0]: https://altlinux.space/amakeenk/trs/compare/v0.6.0...v0.7.0
 [0.6.0]: https://altlinux.space/amakeenk/trs/compare/v0.5.0...v0.6.0
 [0.5.0]: https://altlinux.space/amakeenk/trs/compare/v0.4.2...v0.5.0
