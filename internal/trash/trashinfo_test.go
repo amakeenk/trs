@@ -191,3 +191,40 @@ func TestParseTrashInfo_Symlink(t *testing.T) {
 	_ = got // May be nil if parsing fails due to truncation, that's OK
 }
 
+func TestDeletionDateWithTimezone(t *testing.T) {
+	input := `[Trash Info]
+Path=/home/user/file.txt
+DeletionDate=2024-01-15T10:30:00Z`
+	got, err := parseTrashInfoReader(strings.NewReader(input))
+	require.NoError(t, err)
+	assert.Equal(t, time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC), got.DeletionDate)
+
+	input = `[Trash Info]
+Path=/home/user/file.txt
+DeletionDate=2024-01-15T10:30:00+03:00`
+	got, err = parseTrashInfoReader(strings.NewReader(input))
+	require.NoError(t, err)
+	_, expectedOffset := time.Date(2024, 1, 15, 10, 30, 0, 0, time.FixedZone("", 3*3600)).Zone()
+	_, actualOffset := got.DeletionDate.Zone()
+	assert.Equal(t, expectedOffset, actualOffset)
+	assert.True(t, got.DeletionDate.Equal(time.Date(2024, 1, 15, 10, 30, 0, 0, time.FixedZone("", 3*3600))))
+
+	input = `[Trash Info]
+Path=/home/user/file.txt
+DeletionDate=2024-01-15T10:30:00`
+	got, err = parseTrashInfoReader(strings.NewReader(input))
+	require.NoError(t, err)
+	assert.Equal(t, time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC), got.DeletionDate)
+
+	ti := &TrashInfo{
+		Path:         "/home/user/file.txt",
+		DeletionDate: time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC),
+	}
+	path := t.TempDir() + "/test.trashinfo"
+	err = ti.Write(path)
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Contains(t, string(content), "DeletionDate=2024-01-15T10:30:00Z")
+}

@@ -18,7 +18,7 @@ type TrashInfo struct {
 }
 
 // TimeFormat is the XDG Trash spec time format
-const TimeFormat = "2006-01-02T15:04:05"
+const TimeFormat = time.RFC3339
 
 // ParseTrashInfo reads and parses a .trashinfo file
 func ParseTrashInfo(path string) (*TrashInfo, error) {
@@ -96,7 +96,7 @@ func parseTrashInfoReader(r io.Reader) (*TrashInfo, error) {
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
 
-switch key {
+		switch key {
 		case "Path":
 			// URL decode the path
 			decoded, err := url.QueryUnescape(value)
@@ -120,10 +120,15 @@ switch key {
 			}
 
 			info.Path = decoded
-case "DeletionDate":
-			t, err := time.Parse(TimeFormat, value)
+		case "DeletionDate":
+			// Try RFC3339 first (new format with timezone)
+			t, err := time.Parse(time.RFC3339, value)
 			if err != nil {
-				return nil, fmt.Errorf("parse deletion date: %w", err)
+				// Fall back to old format without timezone (backward compatibility)
+				t, err = time.Parse("2006-01-02T15:04:05", value)
+				if err != nil {
+					return nil, fmt.Errorf("parse deletion date: %w", err)
+				}
 			}
 			info.DeletionDate = t
 		}
@@ -143,7 +148,7 @@ func (ti *TrashInfo) Write(path string) error {
 	buf.WriteString(fmt.Sprintf("Path=%s\n", url.QueryEscape(ti.Path)))
 	buf.WriteString(fmt.Sprintf("DeletionDate=%s\n", ti.DeletionDate.Format(TimeFormat)))
 
-return os.WriteFile(path, []byte(buf.String()), 0600)
+	return os.WriteFile(path, []byte(buf.String()), 0600)
 }
 
 // WriteExclusive writes the TrashInfo to a .trashinfo file atomically using O_EXCL
