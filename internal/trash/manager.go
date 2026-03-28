@@ -328,7 +328,14 @@ func (m *Manager) copyDirAndDeleteVerbose(src, dst string) error {
 }
 
 // copyFile copies a single file preserving permissions
-func copyFile(src, dst string) (err error) {
+func copyFile(src, dst string) error {
+	success := false
+	defer func() {
+		if !success {
+			os.Remove(dst)
+		}
+	}()
+
 	// Use Lstat to avoid following symlinks
 	info, err := os.Lstat(src)
 	if err != nil {
@@ -351,20 +358,18 @@ func copyFile(src, dst string) (err error) {
 		return err
 	}
 
-	// Cleanup partial file on error
-	defer func() {
-		if err != nil {
-			os.Remove(dst)
-		}
-	}()
-
 	_, err = io.Copy(dstFile, srcFile)
 	if err != nil {
 		dstFile.Close()
 		return err
 	}
 
-	return dstFile.Close()
+	if err := dstFile.Close(); err != nil {
+		return err
+	}
+
+	success = true
+	return nil
 }
 
 // resolveNameConflict adds suffix _1, _2, etc. if name already exists in trash

@@ -1226,3 +1226,30 @@ func TestMoveWithInvalidFilename(t *testing.T) {
 		// This would be interpreted as a path, skip
 	})
 }
+
+// TestCopyFileCleanupOnError verifies that copyFile cleans up the destination on ANY error
+func TestCopyFileCleanupOnError(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create source file
+	src := filepath.Join(tmpDir, "src.txt")
+	require.NoError(t, os.WriteFile(src, []byte("hello"), 0644))
+
+	// Test: copyFile to a non-existent parent directory should fail and NOT leave dst
+	dst := filepath.Join(tmpDir, "nonexistent", "dst.txt")
+	err := copyFile(src, dst)
+	require.Error(t, err)
+
+	// Verify dst file was cleaned up (doesn't exist)
+	_, statErr := os.Stat(dst)
+	assert.True(t, os.IsNotExist(statErr), "destination file should be cleaned up on error")
+
+	// Test successful copy still works and file is preserved
+	dst2 := filepath.Join(tmpDir, "dst2.txt")
+	err = copyFile(src, dst2)
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(dst2)
+	require.NoError(t, err)
+	assert.Equal(t, "hello", string(content))
+}
