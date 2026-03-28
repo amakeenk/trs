@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 )
 
 // HomeTrashDir returns the default XDG trash directory
@@ -150,7 +151,7 @@ func EnsureTrashDir(trashDir string) error {
 		filepath.Join(trashDir, "info"),
 	}
 
-for _, dir := range dirs {
+	for _, dir := range dirs {
 		if err := os.MkdirAll(dir, 0700); err != nil {
 			return fmt.Errorf("create trash directory %s: %w", dir, err)
 		}
@@ -177,6 +178,55 @@ func GetTrashDirForPath(path string) (string, error) {
 	}
 
 	return trashDir, nil
+}
+
+// nonLocalPrefixes lists filesystem type prefixes that indicate network/virtual mounts.
+// Any fstype starting with one of these prefixes is considered non-local.
+var nonLocalPrefixes = []string{
+	"fuse", "nfs", "cifs", "sshfs", "davfs", "glusterfs", "ceph", "autofs",
+}
+
+// nonLocalExact lists exact filesystem type names that are virtual or non-local.
+var nonLocalExact = map[string]bool{
+	"tmpfs": true, "devtmpfs": true, "devpts": true, "proc": true,
+	"sysfs": true, "debugfs": true, "securityfs": true, "cgroup": true,
+	"cgroup2": true, "pstore": true, "bpf": true, "tracefs": true,
+	"configfs": true, "hugetlbfs": true, "mqueue": true, "rpc_pipefs": true,
+	"binfmt_misc": true, "squashfs": true, "iso9660": true, "overlay": true,
+}
+
+// isLocalFilesystem returns true if the filesystem type is a local disk filesystem
+// that is safe to stat without risk of hanging.
+func isLocalFilesystem(fstype string) bool {
+	if nonLocalExact[fstype] {
+		return false
+	}
+	for _, prefix := range nonLocalPrefixes {
+		if strings.HasPrefix(fstype, prefix) {
+			return false
+		}
+	}
+	return true
+}
+
+// statWithTimeout calls os.Stat with a timeout to prevent blocking on
+// unresponsive filesystems (e.g. hard NFS mounts, autofs triggers).
+func statWithTimeout(path string, timeout time.Duration) (os.FileInfo, error) {
+	type result struct {
+		fi  os.FileInfo
+		err error
+	}
+	ch := make(chan result, 1)
+	go func() {
+		fi, err := os.Stat(path)
+		ch <- result{fi, err}
+	}()
+	select {
+	case res := <-ch:
+		return res.fi, res.err
+	case <-time.After(timeout):
+		return nil, fmt.Errorf("stat %s: timeout after %v", path, timeout)
+	}
 }
 
 // GetAllTrashDirs returns all trash directories that exist
@@ -214,10 +264,16 @@ func GetAllTrashDirs() ([]string, error) {
 			continue
 		}
 		fields := strings.Fields(line)
-		if len(fields) < 2 {
+		if len(fields) < 3 {
 			continue
 		}
 		mountPoint := fields[1]
+		fstype := fields[2]
+
+		// Skip non-local filesystems (network, virtual, FUSE) to avoid blocking
+		if !isLocalFilesystem(fstype) {
+			continue
+		}
 
 		// Skip if already seen (handles bind mounts)
 		if seen[mountPoint] {
@@ -225,9 +281,9 @@ func GetAllTrashDirs() ([]string, error) {
 		}
 		seen[mountPoint] = true
 
-		// Check for volume trash directory
+		// Check for volume trash directory with timeout
 		volumeTrash := filepath.Join(mountPoint, fmt.Sprintf(".Trash-%d", uid))
-		if fi, err := os.Stat(volumeTrash); err == nil && fi.IsDir() {
+		if fi, err := statWithTimeout(volumeTrash, 2*time.Second); err == nil && fi.IsDir() {
 			dirs = append(dirs, volumeTrash)
 		}
 	}
