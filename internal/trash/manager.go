@@ -699,6 +699,10 @@ func (m *Manager) Empty() error {
 
 // EmptyOlderThan clears items older than days days from all directories
 func (m *Manager) EmptyOlderThan(days int) error {
+	if days < 0 {
+		return fmt.Errorf("days must be non-negative, got %d", days)
+	}
+
 	dirs, err := GetAllTrashDirs()
 	if err != nil {
 		return fmt.Errorf("get trash directories: %w", err)

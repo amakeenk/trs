@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -743,54 +742,54 @@ func TestValidateRestorePath(t *testing.T) {
 // TestValidateFileNameEmpty tests validateFileName with empty name
 func TestValidateFileNameEmpty(t *testing.T) {
 	err := validateFileName("")
- require.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid filename")
 }
 
 // TestValidateFileNameWithSlash tests validateFileName with path separator
 func TestValidateFileNameWithSlash(t *testing.T) {
 	err := validateFileName("test/file.txt")
- require.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "path separator")
 }
 
 // TestValidateFileNameWithBackslash tests validateFileName with backslash
 func TestValidateFileNameWithBackslash(t *testing.T) {
 	err := validateFileName("test\\file.txt")
- require.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "path separator")
 }
 
 // TestValidateFileNameWithParentRef tests validateFileName with parent reference
 func TestValidateFileNameWithParentRef(t *testing.T) {
 	err := validateFileName("test..file.txt")
- require.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "path traversal")
 }
 
 // TestValidateFileNameWithNullByte tests validateFileName with null byte
 func TestValidateFileNameWithNullByte(t *testing.T) {
 	err := validateFileName("test\x00.txt")
- require.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "null byte")
 }
 
 // TestValidateFileNameDot tests validateFileName with dot
 func TestValidateFileNameDot(t *testing.T) {
 	err := validateFileName(".")
- require.Error(t, err)
+	require.Error(t, err)
 }
 
 // TestValidateFileNameDotDot tests validateFileName with ..
 func TestValidateFileNameDotDot(t *testing.T) {
 	err := validateFileName("..")
- require.Error(t, err)
+	require.Error(t, err)
 }
 
 // TestSafeRemoveAllWithNonExistent tests safeRemoveAll with non-existent path
 func TestSafeRemoveAllWithNonExistent(t *testing.T) {
 	err := safeRemoveAll("/nonexistent/directory")
- require.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // TestSafeRemoveAllWithSymlinkInside tests safeRemoveAll with symlink inside directory
@@ -799,34 +798,34 @@ func TestSafeRemoveAllWithSymlinkInside(t *testing.T) {
 
 	// Create directory with symlink inside
 	dir := filepath.Join(tmpDir, "testdir")
- require.NoError(t, os.MkdirAll(dir, 0755))
+	require.NoError(t, os.MkdirAll(dir, 0755))
 
 	target := filepath.Join(tmpDir, "target.txt")
- require.NoError(t, os.WriteFile(target, []byte("test"), 0644))
+	require.NoError(t, os.WriteFile(target, []byte("test"), 0644))
 
 	symlink := filepath.Join(dir, "link.txt")
- require.NoError(t, os.Symlink(target, symlink))
+	require.NoError(t, os.Symlink(target, symlink))
 
 	// Should refuse to remove directory containing symlink
 	err := safeRemoveAll(dir)
- require.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "symlink")
 }
 
 // TestIsCrossDeviceError tests isCrossDeviceError function
 func TestIsCrossDeviceError(t *testing.T) {
 	assert.False(t, isCrossDeviceError(nil))
- assert.False(t, isCrossDeviceError(fmt.Errorf("some error")))
+	assert.False(t, isCrossDeviceError(fmt.Errorf("some error")))
 
 	// Test with actual cross-device error
 	linkErr := &os.LinkError{Err: syscall.EXDEV}
- assert.True(t, isCrossDeviceError(linkErr))
+	assert.True(t, isCrossDeviceError(linkErr))
 }
 
 // TestIsNotFoundError tests isNotFoundError function
 func TestIsNotFoundError(t *testing.T) {
 	assert.True(t, isNotFoundError(fmt.Errorf("file not in trash")))
- assert.False(t, isNotFoundError(fmt.Errorf("some other error")))
+	assert.False(t, isNotFoundError(fmt.Errorf("some other error")))
 	assert.True(t, isNotFoundError(os.ErrNotExist))
 }
 
@@ -838,20 +837,20 @@ func TestCopyAndDeleteWithFile(t *testing.T) {
 	t.Setenv("HOME", tmpHome)
 
 	mgr, err := NewManager()
- require.NoError(t, err)
+	require.NoError(t, err)
 
 	tmpDir := t.TempDir()
 	srcFile := filepath.Join(tmpDir, "src.txt")
- require.NoError(t, os.WriteFile(srcFile, []byte("content"), 0644))
+	require.NoError(t, os.WriteFile(srcFile, []byte("content"), 0644))
 
 	dstFile := filepath.Join(tmpDir, "dst.txt")
 
 	err = mgr.copyAndDelete(srcFile, dstFile)
- require.NoError(t, err)
+	require.NoError(t, err)
 
 	// Verify destination exists and source is gone
 	assert.FileExists(t, dstFile)
- assert.NoFileExists(t, srcFile)
+	assert.NoFileExists(t, srcFile)
 }
 
 // TestCopyFileWithSymlink tests copyFile rejects symlinks
@@ -859,15 +858,15 @@ func TestCopyFileWithSymlink(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	target := filepath.Join(tmpDir, "target.txt")
- require.NoError(t, os.WriteFile(target, []byte("content"), 0644))
+	require.NoError(t, os.WriteFile(target, []byte("content"), 0644))
 
 	symlink := filepath.Join(tmpDir, "link.txt")
- require.NoError(t, os.Symlink(target, symlink))
+	require.NoError(t, os.Symlink(target, symlink))
 
 	dst := filepath.Join(tmpDir, "dst.txt")
 
 	err := copyFile(symlink, dst)
- require.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "symlink")
 }
 
@@ -879,10 +878,10 @@ func TestCopyAndDeleteWithNonExistent(t *testing.T) {
 	t.Setenv("HOME", tmpHome)
 
 	mgr, err := NewManager()
- require.NoError(t, err)
+	require.NoError(t, err)
 
 	err = mgr.copyAndDelete("/nonexistent/src", "/tmp/dst")
- require.Error(t, err)
+	require.Error(t, err)
 }
 
 // TestCopyAndDeleteWithCopyError tests copyAndDelete when copyFile fails
@@ -897,29 +896,28 @@ func TestCopyAndDeleteWithCopyError(t *testing.T) {
 	t.Setenv("HOME", tmpHome)
 
 	mgr, err := NewManager()
- require.NoError(t, err)
+	require.NoError(t, err)
 
 	tmpDir := t.TempDir()
 	srcFile := filepath.Join(tmpDir, "src.txt")
- require.NoError(t, os.WriteFile(srcFile, []byte("content"), 0644))
+	require.NoError(t, os.WriteFile(srcFile, []byte("content"), 0644))
 
 	// Create a directory for destination and make it read-only
 	dstDir := filepath.Join(tmpDir, "readonly")
- require.NoError(t, os.MkdirAll(dstDir, 0755))
- require.NoError(t, os.Chmod(dstDir, 0500))
- defer os.Chmod(dstDir, 0755)
+	require.NoError(t, os.MkdirAll(dstDir, 0755))
+	require.NoError(t, os.Chmod(dstDir, 0500))
+	defer os.Chmod(dstDir, 0755)
 
 	dstFile := filepath.Join(dstDir, "dst.txt")
 
 	err = mgr.copyAndDelete(srcFile, dstFile)
 	// Should fail because destination directory is read-only
- require.Error(t, err)
+	require.Error(t, err)
 	// Source should still exist
- assert.FileExists(t, srcFile)
+	assert.FileExists(t, srcFile)
 	// Destination should not exist (cleanup)
- assert.NoFileExists(t, dstFile)
+	assert.NoFileExists(t, dstFile)
 }
-
 
 // TestCopyDirAndDeleteWithMkdirError tests copyDirAndDelete with mkdir error
 func TestCopyDirAndDeleteWithMkdirError(t *testing.T) {
@@ -933,18 +931,18 @@ func TestCopyDirAndDeleteWithMkdirError(t *testing.T) {
 	t.Setenv("HOME", tmpHome)
 
 	mgr, err := NewManager()
- require.NoError(t, err)
+	require.NoError(t, err)
 
 	tmpDir := t.TempDir()
 	srcDir := filepath.Join(tmpDir, "srcdir")
- require.NoError(t, os.MkdirAll(srcDir, 0755))
+	require.NoError(t, os.MkdirAll(srcDir, 0755))
 
 	// Create a file as destination to cause MkdirAll to fail
 	dstFile := filepath.Join(tmpDir, "dstdir")
- require.NoError(t, os.WriteFile(dstFile, []byte("content"), 0644))
+	require.NoError(t, os.WriteFile(dstFile, []byte("content"), 0644))
 
 	err = mgr.copyDirAndDelete(srcDir, dstFile)
- require.Error(t, err)
+	require.Error(t, err)
 }
 
 // TestStatus tests Status function
@@ -955,11 +953,11 @@ func TestStatus(t *testing.T) {
 	t.Setenv("HOME", tmpHome)
 
 	mgr, err := NewManager()
- require.NoError(t, err)
+	require.NoError(t, err)
 
 	// Empty trash
 	count, size, err := mgr.Status()
- require.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 0, count)
 	assert.Equal(t, int64(0), size)
 
@@ -967,12 +965,12 @@ func TestStatus(t *testing.T) {
 	tmpDir := t.TempDir()
 	for i := 0; i < 3; i++ {
 		file := filepath.Join(tmpDir, fmt.Sprintf("file%d.txt", i))
- require.NoError(t, os.WriteFile(file, []byte(fmt.Sprintf("content%d", i)), 0644))
- require.NoError(t, mgr.Move(file))
+		require.NoError(t, os.WriteFile(file, []byte(fmt.Sprintf("content%d", i)), 0644))
+		require.NoError(t, mgr.Move(file))
 	}
 
 	count, size, err = mgr.Status()
- require.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 3, count)
 	assert.Greater(t, size, int64(0))
 }
@@ -985,23 +983,23 @@ func TestMove(t *testing.T) {
 	t.Setenv("HOME", tmpHome)
 
 	mgr, err := NewManager()
- require.NoError(t, err)
+	require.NoError(t, err)
 
 	tmpDir := t.TempDir()
 
 	t.Run("file", func(t *testing.T) {
 		file := filepath.Join(tmpDir, "test.txt")
- require.NoError(t, os.WriteFile(file, []byte("content"), 0644))
- require.NoError(t, mgr.Move(file))
- assert.NoFileExists(t, file)
+		require.NoError(t, os.WriteFile(file, []byte("content"), 0644))
+		require.NoError(t, mgr.Move(file))
+		assert.NoFileExists(t, file)
 	})
 
 	t.Run("directory", func(t *testing.T) {
 		dir := filepath.Join(tmpDir, "testdir")
- require.NoError(t, os.MkdirAll(dir, 0755))
- require.NoError(t, os.WriteFile(filepath.Join(dir, "file.txt"), []byte("content"), 0644))
- require.NoError(t, mgr.Move(dir))
- assert.NoDirExists(t, dir)
+		require.NoError(t, os.MkdirAll(dir, 0755))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "file.txt"), []byte("content"), 0644))
+		require.NoError(t, mgr.Move(dir))
+		assert.NoDirExists(t, dir)
 	})
 }
 
@@ -1017,24 +1015,24 @@ func TestMoveWithWriteExclusiveError(t *testing.T) {
 	t.Setenv("HOME", tmpHome)
 
 	mgr, err := NewManager()
- require.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create trash directory with wrong permissions to cause WriteExclusive to fail
 	trashDir := filepath.Join(xdgData, "Trash")
- require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "files"), 0755))
- require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "info"), 0755))
+	require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "files"), 0755))
+	require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "info"), 0755))
 
 	// Make info directory read-only to cause WriteExclusive to fail
- require.NoError(t, os.Chmod(filepath.Join(trashDir, "info"), 0500))
- defer os.Chmod(filepath.Join(trashDir, "info"), 0755)
+	require.NoError(t, os.Chmod(filepath.Join(trashDir, "info"), 0500))
+	defer os.Chmod(filepath.Join(trashDir, "info"), 0755)
 
 	tmpDir := t.TempDir()
 	file := filepath.Join(tmpDir, "test.txt")
- require.NoError(t, os.WriteFile(file, []byte("content"), 0644))
+	require.NoError(t, os.WriteFile(file, []byte("content"), 0644))
 
 	err = mgr.Move(file)
- // This should fail because WriteExclusive cannot write to info directory
- require.Error(t, err)
+	// This should fail because WriteExclusive cannot write to info directory
+	require.Error(t, err)
 }
 
 // TestMovePath tests movePath function directly
@@ -1045,20 +1043,20 @@ func TestMovePath(t *testing.T) {
 	t.Setenv("HOME", tmpHome)
 
 	mgr, err := NewManager()
- require.NoError(t, err)
+	require.NoError(t, err)
 
 	tmpDir := t.TempDir()
 	srcFile := filepath.Join(tmpDir, "src.txt")
- require.NoError(t, os.WriteFile(srcFile, []byte("content"), 0644))
+	require.NoError(t, os.WriteFile(srcFile, []byte("content"), 0644))
 
 	dstFile := filepath.Join(tmpDir, "dst.txt")
 
 	err = mgr.movePath(srcFile, dstFile)
- require.NoError(t, err)
+	require.NoError(t, err)
 
 	// Verify file moved
- assert.NoFileExists(t, srcFile)
- assert.FileExists(t, dstFile)
+	assert.NoFileExists(t, srcFile)
+	assert.FileExists(t, dstFile)
 }
 
 // TestRestoreFromDir tests RestoreFromDir function
@@ -1069,20 +1067,21 @@ func TestRestoreFromDir(t *testing.T) {
 	t.Setenv("HOME", tmpHome)
 
 	mgr, err := NewManager()
- require.NoError(t, err)
+	require.NoError(t, err)
 
 	tmpDir := t.TempDir()
 	originalPath := filepath.Join(tmpDir, "test_restore.txt")
- require.NoError(t, os.WriteFile(originalPath, []byte("content"), 0644))
- require.NoError(t, mgr.Move(originalPath))
+	require.NoError(t, os.WriteFile(originalPath, []byte("content"), 0644))
+	require.NoError(t, mgr.Move(originalPath))
 
 	trashDir := filepath.Join(xdgData, "Trash")
 	err = mgr.RestoreFromDir(trashDir, "test_restore.txt", false)
- require.NoError(t, err)
+	require.NoError(t, err)
 
 	// Verify file restored
- assert.FileExists(t, originalPath)
+	assert.FileExists(t, originalPath)
 }
+
 // TestRestoreFromDirWithExistingDestination tests RestoreFromDir with existing destination
 func TestRestoreFromDirWithExistingDestination(t *testing.T) {
 	tmpHome := t.TempDir()
@@ -1091,19 +1090,19 @@ func TestRestoreFromDirWithExistingDestination(t *testing.T) {
 	t.Setenv("HOME", tmpHome)
 
 	mgr, err := NewManager()
- require.NoError(t, err)
+	require.NoError(t, err)
 
 	tmpDir := t.TempDir()
 	originalPath := filepath.Join(tmpDir, "test_existing.txt")
- require.NoError(t, os.WriteFile(originalPath, []byte("original"), 0644))
- require.NoError(t, mgr.Move(originalPath))
+	require.NoError(t, os.WriteFile(originalPath, []byte("original"), 0644))
+	require.NoError(t, mgr.Move(originalPath))
 
 	// Create a new file at the same location
- require.NoError(t, os.WriteFile(originalPath, []byte("new"), 0644))
+	require.NoError(t, os.WriteFile(originalPath, []byte("new"), 0644))
 
 	trashDir := filepath.Join(xdgData, "Trash")
 	err = mgr.RestoreFromDir(trashDir, "test_existing.txt", false)
- require.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "destination exists")
 }
 
@@ -1119,21 +1118,21 @@ func TestRestoreFromDirWithSymlinkDestination(t *testing.T) {
 	t.Setenv("HOME", tmpHome)
 
 	mgr, err := NewManager()
- require.NoError(t, err)
+	require.NoError(t, err)
 
 	tmpDir := t.TempDir()
 	originalPath := filepath.Join(tmpDir, "test_symlink.txt")
- require.NoError(t, os.WriteFile(originalPath, []byte("content"), 0644))
- require.NoError(t, mgr.Move(originalPath))
+	require.NoError(t, os.WriteFile(originalPath, []byte("content"), 0644))
+	require.NoError(t, mgr.Move(originalPath))
 
 	// Create a symlink at the same location
 	target := filepath.Join(tmpDir, "target.txt")
- require.NoError(t, os.WriteFile(target, []byte("target"), 0644))
- require.NoError(t, os.Symlink(target, originalPath))
+	require.NoError(t, os.WriteFile(target, []byte("target"), 0644))
+	require.NoError(t, os.Symlink(target, originalPath))
 
 	trashDir := filepath.Join(xdgData, "Trash")
 	err = mgr.RestoreFromDir(trashDir, "test_symlink.txt", true)
- require.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "symlink")
 }
 
@@ -1146,25 +1145,26 @@ func TestRestoreFromDirWithInvalidPath(t *testing.T) {
 
 	// Create trash directory structure
 	trashDir := filepath.Join(xdgData, "Trash")
- require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "files"), 0755))
- require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "info"), 0755))
+	require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "files"), 0755))
+	require.NoError(t, os.MkdirAll(filepath.Join(trashDir, "info"), 0755))
 
 	// Create a file in trash
 	trashFile := filepath.Join(trashDir, "files", "test_invalid.txt")
- require.NoError(t, os.WriteFile(trashFile, []byte("content"), 0644))
+	require.NoError(t, os.WriteFile(trashFile, []byte("content"), 0644))
 
 	// Create trashinfo with invalid path (system path)
 	trashInfo := filepath.Join(trashDir, "info", "test_invalid.txt.trashinfo")
 	infoContent := fmt.Sprintf("[Trash Info]\nPath=/etc/passwd\nDeletionDate=%s\n", time.Now().Format("2006-01-02T15:04:05"))
- require.NoError(t, os.WriteFile(trashInfo, []byte(infoContent), 0644))
+	require.NoError(t, os.WriteFile(trashInfo, []byte(infoContent), 0644))
 
 	mgr, err := NewManager()
- require.NoError(t, err)
+	require.NoError(t, err)
 
 	err = mgr.RestoreFromDir(trashDir, "test_invalid.txt", false)
- require.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid restore path")
 }
+
 // TestCopyFileWithOpenError tests copyFile with destination open error
 func TestCopyFileWithOpenError(t *testing.T) {
 	if os.Getuid() == 0 {
@@ -1173,16 +1173,38 @@ func TestCopyFileWithOpenError(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	srcFile := filepath.Join(tmpDir, "src.txt")
- require.NoError(t, os.WriteFile(srcFile, []byte("content"), 0644))
+	require.NoError(t, os.WriteFile(srcFile, []byte("content"), 0644))
 
 	// Create a directory with same name as destination to cause open error
 	dstDir := filepath.Join(tmpDir, "dst.txt")
- require.NoError(t, os.MkdirAll(dstDir, 0755))
+	require.NoError(t, os.MkdirAll(dstDir, 0755))
 
 	err := copyFile(srcFile, filepath.Join(dstDir, "file.txt"))
- // This should succeed (copying into directory)
- // Actually it might fail depending on implementation
- _ = err
+	// This should succeed (copying into directory)
+	// Actually it might fail depending on implementation
+	_ = err
+}
+
+// TestEmptyOlderThanNegativeDays tests EmptyOlderThan rejects negative days
+func TestEmptyOlderThanNegativeDays(t *testing.T) {
+	tmpHome := t.TempDir()
+	xdgData := filepath.Join(tmpHome, ".local", "share")
+	t.Setenv("XDG_DATA_HOME", xdgData)
+	t.Setenv("HOME", tmpHome)
+
+	mgr, err := NewManager()
+	require.NoError(t, err)
+
+	err = mgr.EmptyOlderThan(-1)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "days must be non-negative")
+
+	err = mgr.EmptyOlderThan(-100)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "days must be non-negative")
+
+	err = mgr.EmptyOlderThan(0)
+	require.NoError(t, err)
 }
 
 // TestMoveWithInvalidFilename tests Move with invalid filename
@@ -1204,7 +1226,3 @@ func TestMoveWithInvalidFilename(t *testing.T) {
 		// This would be interpreted as a path, skip
 	})
 }
-
-
-
-
