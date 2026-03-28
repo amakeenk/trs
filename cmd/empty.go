@@ -41,6 +41,12 @@ type EmptyResult struct {
 }
 
 func runEmpty(cmd *cobra.Command, args []string) {
+	// Validate --days flag
+	if flagDays < 0 {
+		exitWithError(fmt.Sprintf("Error: --days must be non-negative, got %d", flagDays), 1)
+		return
+	}
+
 	mgr, err := trash.NewManager()
 	if err != nil {
 		exitWithError(fmt.Sprintf("Error: %v", err), 1)

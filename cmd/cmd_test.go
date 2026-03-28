@@ -3341,3 +3341,41 @@ func TestNewRestoreCmd(t *testing.T) {
 	assert.NotNil(t, cmd.Flags().Lookup("last"))
 	assert.NotNil(t, cmd.Flags().Lookup("force"))
 }
+
+// TestEmptyNegativeDays tests that --days with negative value is rejected immediately
+func TestEmptyNegativeDays(t *testing.T) {
+	if os.Getenv("GO_TEST_EMPTY_NEGATIVE_DAYS") == "1" {
+		setupTestEnv(t)
+
+		mgr, err := trash.NewManager()
+		require.NoError(t, err)
+
+		tmpDir := t.TempDir()
+		file := filepath.Join(tmpDir, "negative_days_test.txt")
+		require.NoError(t, os.WriteFile(file, []byte("content"), 0644))
+		require.NoError(t, mgr.Move(file))
+
+		oldDays := flagDays
+		oldForce := flagForce
+		flagDays = -1
+		flagForce = true
+		defer func() {
+			flagDays = oldDays
+			flagForce = oldForce
+		}()
+
+		runEmpty(nil, nil)
+		return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestEmptyNegativeDays")
+	cmd.Env = append(os.Environ(), "GO_TEST_EMPTY_NEGATIVE_DAYS=1")
+	output, err := cmd.CombinedOutput()
+
+	if e, ok := err.(*exec.ExitError); ok {
+		assert.Equal(t, 1, e.ExitCode())
+		assert.Contains(t, string(output), "non-negative")
+	} else {
+		t.Fatalf("expected exit error, got: %v", err)
+	}
+}
