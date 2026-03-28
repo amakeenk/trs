@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -78,8 +79,12 @@ func runEmpty(cmd *cobra.Command, args []string) {
 		}
 		fmt.Printf("%s [y/N]: ", msg)
 
-		var response string
-		fmt.Scanln(&response)
+		scanner := bufio.NewScanner(os.Stdin)
+		scanner.Buffer(make([]byte, 256), 256)
+		if !scanner.Scan() {
+			return
+		}
+		response := scanner.Text()
 
 		// Validate input for security
 		if err := validateCLIInput(response); err != nil {

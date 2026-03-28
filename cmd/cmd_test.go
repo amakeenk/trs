@@ -3342,6 +3342,45 @@ func TestNewRestoreCmd(t *testing.T) {
 	assert.NotNil(t, cmd.Flags().Lookup("force"))
 }
 
+// TestEmptyLongInput tests that oversized input is handled safely
+func TestEmptyLongInput(t *testing.T) {
+	if os.Getenv("GO_TEST_EMPTY_LONG_INPUT") == "1" {
+		setupTestEnv(t)
+
+		mgr, err := trash.NewManager()
+		require.NoError(t, err)
+
+		tmpDir := t.TempDir()
+		file := filepath.Join(tmpDir, "long_input_test.txt")
+		require.NoError(t, os.WriteFile(file, []byte("content"), 0644))
+		require.NoError(t, mgr.Move(file))
+
+		// Save flags - no force, no JSON to trigger prompt
+		oldForce := flagForce
+		oldJSON := flagJSON
+		flagForce = false
+		flagJSON = false
+		defer func() {
+			flagForce = oldForce
+			flagJSON = oldJSON
+		}()
+
+		runEmpty(nil, nil)
+		return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestEmptyLongInput")
+	cmd.Env = append(os.Environ(), "GO_TEST_EMPTY_LONG_INPUT=1")
+	// Send 512 bytes (exceeds 256-byte buffer limit) followed by newline
+	longInput := strings.Repeat("A", 512) + "\n"
+	cmd.Stdin = strings.NewReader(longInput)
+	output, err := cmd.CombinedOutput()
+	// Should not crash; either exits cleanly or handles gracefully
+	// bufio.Scanner will return an error for tokens exceeding buffer size,
+	// which causes scanner.Scan() to return false, so runEmpty returns early
+	require.NoError(t, err, "command should not crash, output: %s", output)
+}
+
 // TestEmptyNegativeDays tests that --days with negative value is rejected immediately
 func TestEmptyNegativeDays(t *testing.T) {
 	if os.Getenv("GO_TEST_EMPTY_NEGATIVE_DAYS") == "1" {
