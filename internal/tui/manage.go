@@ -208,13 +208,13 @@ func (m ManageModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Check for action keys 'r' and 'd'
 	switch msg.String() {
 	case "r":
-		if len(m.selectedItems) > 0 {
+		if len(m.SelectedItems()) > 0 {
 			m.action = ActionRestore
 			m.mode = modeConfirm
 			return m, nil
 		}
 	case "d":
-		if len(m.selectedItems) > 0 {
+		if len(m.SelectedItems()) > 0 {
 			m.action = ActionDelete
 			m.mode = modeConfirm
 			return m, nil
@@ -283,13 +283,13 @@ func (m ManageModel) updateSelectMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.search.Focus()
 		return m, nil
 	case "r":
-		if len(m.selectedItems) > 0 {
+		if len(m.SelectedItems()) > 0 {
 			m.action = ActionRestore
 			m.mode = modeConfirm
 			return m, nil
 		}
 	case "d":
-		if len(m.selectedItems) > 0 {
+		if len(m.SelectedItems()) > 0 {
 			m.action = ActionDelete
 			m.mode = modeConfirm
 			return m, nil
@@ -516,14 +516,14 @@ func (m ManageModel) viewSelect() string {
 		if selectedCount > 0 {
 			b.WriteString(helpStyle.Render(fmt.Sprintf("Esc clear • ↑/↓ nav • Tab sel (%d) • Ctrl+a all • r rest • d del", selectedCount)))
 		} else {
-			b.WriteString(helpStyle.Render("Esc clear/exit • ↑/↓ navigate • Tab select • Ctrl+a all • r restore • d delete"))
+			b.WriteString(helpStyle.Render("Esc clear/exit • ↑/↓ navigate • Tab select • Ctrl+a all • r rest cur • d del cur"))
 		}
 	} else {
 		selectedCount := len(m.selectedItems)
 		if selectedCount > 0 {
 			b.WriteString(helpStyle.Render(fmt.Sprintf("↑/↓ nav • Tab sel (%d) • a/A all/none • / search • r rest • d del • Esc cancel", selectedCount)))
 		} else {
-			b.WriteString(helpStyle.Render("↑/↓ navigate • Tab select • a/A all/none • / search • r restore • d delete • Esc cancel"))
+			b.WriteString(helpStyle.Render("↑/↓ navigate • Tab select • a/A all/none • / search • r rest cur • d del cur • Esc cancel"))
 		}
 	}
 
