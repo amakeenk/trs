@@ -230,6 +230,7 @@ func statWithTimeout(path string, timeout time.Duration) (os.FileInfo, error) {
 		fi  os.FileInfo
 		err error
 	}
+	// Use buffered channel to prevent goroutine leak if we timeout
 	ch := make(chan result, 1)
 	go func() {
 		fi, err := os.Stat(path)

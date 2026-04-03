@@ -733,18 +733,21 @@ func (m *Manager) EmptyDirOlderThan(trashDir string, days int) error {
 		cutoff = time.Now()
 	}
 
+	var lastErr error
 	for _, item := range items {
 		if days == 0 || item.DeletionDate.Before(cutoff) {
 			// Validate filename to prevent path traversal
 			if err := validateFileName(item.Name); err != nil {
-				return fmt.Errorf("invalid filename %s: %w", item.Name, err)
+				lastErr = fmt.Errorf("invalid filename %s: %w", item.Name, err)
+				continue
 			}
 
 			// Remove file/directory using chmodAndRemoveAll (handles read-only files)
-			// Path is safe: trashDir is validated, item.Name is validated
 			filePath := filepath.Join(trashDir, "files", item.Name)
 			if err := chmodAndRemoveAll(filePath); err != nil {
-				return fmt.Errorf("remove %s: %w", item.Name, err)
+				// Don't stop on failure, try other files
+				lastErr = fmt.Errorf("remove %s: %w", item.Name, err)
+				continue
 			}
 
 			// Remove trashinfo
@@ -753,7 +756,7 @@ func (m *Manager) EmptyDirOlderThan(trashDir string, days int) error {
 		}
 	}
 
-	return nil
+	return lastErr
 }
 
 // chmodAndRemoveAll makes all files writable then removes the directory tree
@@ -761,11 +764,12 @@ func chmodAndRemoveAll(path string) error {
 	// First, make everything writable so we can delete it
 	filepath.Walk(path, func(subPath string, info os.FileInfo, err error) error {
 		if err != nil {
-			return nil // Ignore errors, best effort
+			return nil // Ignore walk errors, best effort
 		}
-		// Make files and directories writable
+		// Make files and directories writable if they aren't
 		if info.Mode()&0200 == 0 {
-			os.Chmod(subPath, info.Mode()|0200)
+			// Try to make it writable, ignore error as RemoveAll might still work
+			_ = os.Chmod(subPath, info.Mode()|0200)
 		}
 		return nil
 	})
