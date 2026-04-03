@@ -806,10 +806,11 @@ func TestSafeRemoveAllWithSymlinkInside(t *testing.T) {
 	symlink := filepath.Join(dir, "link.txt")
 	require.NoError(t, os.Symlink(target, symlink))
 
-	// Should refuse to remove directory containing symlink
+	// Should successfully remove directory containing symlink
 	err := safeRemoveAll(dir)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "symlink")
+	require.NoError(t, err)
+	_, err = os.Lstat(dir)
+	assert.True(t, os.IsNotExist(err))
 }
 
 // TestIsCrossDeviceError tests isCrossDeviceError function

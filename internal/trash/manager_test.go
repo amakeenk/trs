@@ -579,10 +579,19 @@ func TestCopyDirAndDeleteWithSymlinkInSubdirectory(t *testing.T) {
 	mgr, err := NewManager()
 	require.NoError(t, err)
 
-	// copyDirAndDelete should FAIL because safeRemoveAll rejects directories with symlinks inside
+	// copyDirAndDelete should succeed now because safeRemoveAll allows directories with symlinks
 	err = mgr.copyDirAndDelete(srcDir, dstDir)
-	require.Error(t, err, "copyDirAndDelete should fail when source directory contains symlink in subdirectory")
-	assert.Contains(t, err.Error(), "symlink", "error should mention symlink")
+	require.NoError(t, err, "copyDirAndDelete should succeed even when source directory contains symlink")
+
+	// Verify source was removed
+	_, err = os.Lstat(srcDir)
+	assert.True(t, os.IsNotExist(err), "source directory should be removed")
+
+	// Verify destination was created and contains the symlink
+	dstSymlink := filepath.Join(dstDir, "sub", "link")
+	fi, err := os.Lstat(dstSymlink)
+	require.NoError(t, err)
+	assert.True(t, fi.Mode()&os.ModeSymlink != 0, "destination should contain a symlink")
 
 	// CRITICAL: Verify sensitive data was NOT deleted
 	_, err = os.Stat(sensitiveFile)

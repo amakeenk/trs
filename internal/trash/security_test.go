@@ -48,8 +48,8 @@ func TestSecurity_SymlinkAttacks(t *testing.T) {
 			},
 		},
 		{
-			name:        "directory_with_symlink_inside_rejected",
-			description: "Directory containing symlink should be rejected during cross-device copy",
+			name:        "directory_with_symlink_inside_allowed",
+			description: "Directory containing symlink should be allowed during cross-device copy now",
 			setup: func(tmpDir string) (string, string) {
 				// Create sensitive data outside the directory to be trashed
 				sensitiveDir := filepath.Join(tmpDir, "sensitive")
@@ -70,8 +70,8 @@ func TestSecurity_SymlinkAttacks(t *testing.T) {
 				dstDir := filepath.Join(filepath.Dir(attackPath), "destination")
 				return mgr.copyDirAndDelete(attackPath, dstDir)
 			},
-			wantErr:     true,
-			errContains: "symlink",
+			wantErr:     false,
+			errContains: "",
 			verifySafe: func(t *testing.T, targetPath string) {
 				// Sensitive file should NOT be deleted
 				assert.FileExists(t, targetPath)
@@ -102,8 +102,8 @@ func TestSecurity_SymlinkAttacks(t *testing.T) {
 			},
 		},
 		{
-			name:        "safeRemoveAll_rejects_directory_with_symlink",
-			description: "safeRemoveAll should reject directories containing symlinks",
+			name:        "safeRemoveAll_allows_directory_with_symlink",
+			description: "safeRemoveAll should allow directories containing symlinks now",
 			setup: func(tmpDir string) (string, string) {
 				sensitiveDir := filepath.Join(tmpDir, "sensitive")
 				require.NoError(t, os.MkdirAll(sensitiveDir, 0755))
@@ -120,8 +120,8 @@ func TestSecurity_SymlinkAttacks(t *testing.T) {
 			action: func(mgr *Manager, attackPath string) error {
 				return safeRemoveAll(attackPath)
 			},
-			wantErr:     true,
-			errContains: "symlink",
+			wantErr:     false,
+			errContains: "",
 			verifySafe: func(t *testing.T, targetPath string) {
 				assert.FileExists(t, targetPath)
 			},
