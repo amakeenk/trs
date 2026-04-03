@@ -126,25 +126,39 @@ func SameFilesystem(path1, path2 string) (bool, error) {
 	return stat1.Dev == stat2.Dev, nil
 }
 
-// EnsureTrashDir creates the trash directory structure if it doesn't exist
-func EnsureTrashDir(trashDir string) error {
-	// Security check: verify trashDir is not a symlink
-	if fi, err := os.Lstat(trashDir); err == nil {
-		if fi.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("trash directory cannot be a symlink: %s", trashDir)
-		}
-		// Verify ownership
-		if stat, ok := fi.Sys().(*syscall.Stat_t); ok {
-			if int(stat.Uid) != os.Getuid() {
-				return fmt.Errorf("trash directory not owned by current user: %s", trashDir)
-			}
-		}
-		// Verify permissions (should be 0700)
-		if fi.Mode().Perm() != 0700 {
-			return fmt.Errorf("trash directory has insecure permissions: %s (expected 0700, got %03o). Fix with: chmod 0700 '%s'", trashDir, fi.Mode().Perm(), trashDir)
+// checkSecureDir verifies that a directory exists, is owned by the current user,
+// has correct permissions, and is not a symlink.
+func checkSecureDir(path string) error {
+	fi, err := os.Lstat(path)
+	if err != nil {
+		return fmt.Errorf("stat %s: %w", path, err)
+	}
+
+	if !fi.IsDir() {
+		return fmt.Errorf("not a directory: %s", path)
+	}
+
+	if fi.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("directory cannot be a symlink: %s", path)
+	}
+
+	// Verify ownership
+	if stat, ok := fi.Sys().(*syscall.Stat_t); ok {
+		if int(stat.Uid) != os.Getuid() {
+			return fmt.Errorf("directory not owned by current user: %s (owned by UID %d)", path, stat.Uid)
 		}
 	}
 
+	// Verify permissions (strictly 0700)
+	if fi.Mode().Perm() != 0700 {
+		return fmt.Errorf("directory has insecure permissions: %s (expected 0700, got %03o)", path, fi.Mode().Perm())
+	}
+
+	return nil
+}
+
+// EnsureTrashDir creates the trash directory structure if it doesn't exist
+func EnsureTrashDir(trashDir string) error {
 	dirs := []string{
 		trashDir,
 		filepath.Join(trashDir, "files"),
@@ -152,14 +166,14 @@ func EnsureTrashDir(trashDir string) error {
 	}
 
 	for _, dir := range dirs {
+		// Use 0700 to ensure only owner can access during creation
 		if err := os.MkdirAll(dir, 0700); err != nil {
 			return fmt.Errorf("create trash directory %s: %w", dir, err)
 		}
-		// Verify the created directory is not a symlink
-		if fi, err := os.Lstat(dir); err == nil {
-			if fi.Mode()&os.ModeSymlink != 0 {
-				return fmt.Errorf("trash directory cannot be a symlink: %s", dir)
-			}
+
+		// MANDATORY: Verify security AFTER creation to prevent TOCTOU attacks
+		if err := checkSecureDir(dir); err != nil {
+			return fmt.Errorf("security check failed for %s: %w", dir, err)
 		}
 	}
 
