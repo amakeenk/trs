@@ -63,6 +63,7 @@ trs manage --json       # JSON output
 
 TUI features:
 - Multi-select with Tab/Space, arrow navigation
+- Select all with `a` or `Ctrl+a`, deselect all with `A`
 - Fuzzy search across names and original paths
 - Press `r` to restore or `d` to permanently delete selected files
 - Results show full original paths
@@ -126,6 +127,7 @@ The `trs manage` command launches an interactive terminal UI:
 - Fuzzy search across file names and original paths
 - Arrow key navigation with live preview
 - Multi-select files with Tab/Space
+- Select all with `a` or `Ctrl+a`, deselect all with `A`
 - Press `r` to restore or `d` to permanently delete selected files
 - Confirmation screen before action
 - Works in any terminal
@@ -138,7 +140,8 @@ trs implements multiple security measures:
 - **Path validation** - Prevents path traversal attacks
 - **TrashInfo validation** - Validates paths from `.trashinfo` files
 - **DoS prevention** - Size and iteration limits on all operations
-- **Directory validation** - Verifies trash directory ownership and permissions
+- **Directory validation** - Verifies trash directory ownership and permissions (protected against TOCTOU)
+- **Safe removal** - Uses `os.RemoveAll` which is safe against symlink attacks on modern Unix systems
 
 ### JSON Output
 
