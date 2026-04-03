@@ -889,9 +889,9 @@ func validateFileName(name string) error {
 	return nil
 }
 
-// safeRemoveAll removes a path without following symlinks in subdirectories
+// safeRemoveAll removes a path safely. For directories, it uses os.RemoveAll
+// which in modern Go (1.19+) on Unix is protected against symlink attacks.
 func safeRemoveAll(path string) error {
-	// Check if path itself is a symlink
 	info, err := os.Lstat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -900,26 +900,13 @@ func safeRemoveAll(path string) error {
 		return err
 	}
 
-	// If it's a file or symlink, just remove it
-	if !info.IsDir() {
+	// If it's a symlink, only remove the link itself, never follow it
+	if info.Mode()&os.ModeSymlink != 0 {
 		return os.Remove(path)
 	}
 
-	// For directories, walk and check for symlinks before removing
-	err = filepath.Walk(path, func(subPath string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		// Check for symlinks inside directory
-		if subPath != path && info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("refusing to remove directory containing symlink: %s", subPath)
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
+	// For directories and regular files, os.RemoveAll is safe on Unix-like systems
+	// in recent Go versions as it uses openat/unlinkat logic to prevent escapes.
 	return os.RemoveAll(path)
 }
 
