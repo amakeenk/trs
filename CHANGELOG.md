@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-04-03
+
+### Added
+- "Select all" (`a`, `Ctrl+a`) and "Deselect all" (`A`) features in management TUI
+- Support for selecting all filtered items in search mode
+
+### Changed
+- Improved UX in TUI: allow quick restore/delete actions on highlighted items without explicit selection
+- Updated documentation to reflect correct command names and new features
+
+### Fixed
+- Improved robustness of file removal and cleanup operations
+- Prevented potential goroutine leaks in filesystem operations
+- Fixed cross-device moves for directories containing symlinks
+
+### Security
+- Prevented TOCTOU (Time-of-Check to Time-of-Use) attacks on trash directory creation and ownership verification
+- Prevented TOCTOU attacks during recursive removal of trashed items
+- Enabled safe recursive removal that protects against symlink attacks using modern Go/Unix primitives
+
 ## [0.8.0] - 2026-03-28
 
 ### Fixed
@@ -144,7 +164,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - github.com/spf13/cobra - CLI framework
 - github.com/stretchr/testify - Testing assertions
 
-[Unreleased]: https://altlinux.space/amakeenk/trs/compare/v0.8.0...HEAD
+[Unreleased]: https://altlinux.space/amakeenk/trs/compare/v0.9.0...HEAD
+[0.9.0]: https://altlinux.space/amakeenk/trs/compare/v0.8.0...v0.9.0
 [0.8.0]: https://altlinux.space/amakeenk/trs/compare/v0.7.0...v0.8.0
 [0.7.0]: https://altlinux.space/amakeenk/trs/compare/v0.6.0...v0.7.0
 [0.6.0]: https://altlinux.space/amakeenk/trs/compare/v0.5.0...v0.6.0
