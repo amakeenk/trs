@@ -38,6 +38,67 @@ func TestNewManageModelWithForce(t *testing.T) {
 	assert.True(t, model.force)
 }
 
+func TestManageModelSelectAll(t *testing.T) {
+	items := []trash.TrashItem{
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: time.Now(), Size: 200, IsDir: false},
+		{Name: "other.txt", OriginalPath: "/path/to/other.txt", DeletionDate: time.Now(), Size: 300, IsDir: false},
+	}
+
+	t.Run("select all with 'a'", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("a")}
+
+		updatedModel, _ := model.Update(msg)
+		m := updatedModel.(ManageModel)
+
+		assert.Len(t, m.selectedItems, 3)
+		assert.True(t, m.selectedItems[itemKey(items[0])])
+		assert.True(t, m.selectedItems[itemKey(items[1])])
+		assert.True(t, m.selectedItems[itemKey(items[2])])
+	})
+
+	t.Run("deselect all with 'A'", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.selectedItems[itemKey(items[0])] = true
+		model.selectedItems[itemKey(items[1])] = true
+
+		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("A")}
+
+		updatedModel, _ := model.Update(msg)
+		m := updatedModel.(ManageModel)
+
+		assert.Len(t, m.selectedItems, 0)
+	})
+
+	t.Run("select all with Ctrl+a", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		msg := tea.KeyMsg{Type: tea.KeyCtrlA}
+
+		updatedModel, _ := model.Update(msg)
+		m := updatedModel.(ManageModel)
+
+		assert.Len(t, m.selectedItems, 3)
+	})
+
+	t.Run("select all in search mode", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.mode = modeSearch
+		model.search.SetValue("file")
+		model.filterItems() // "file1.txt" and "file2.txt"
+
+		msg := tea.KeyMsg{Type: tea.KeyCtrlA}
+
+		updatedModel, _ := model.Update(msg)
+		m := updatedModel.(ManageModel)
+
+		assert.Len(t, m.selectedItems, 2)
+		assert.True(t, m.selectedItems[itemKey(items[0])])
+		assert.True(t, m.selectedItems[itemKey(items[1])])
+		assert.False(t, m.selectedItems[itemKey(items[2])])
+	})
+}
+
 func TestManageModelInit(t *testing.T) {
 	items := []trash.TrashItem{
 		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},

@@ -200,6 +200,9 @@ func (m ManageModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, nil
+
+	case tea.KeyCtrlA:
+		return m.selectAll(), nil
 	}
 
 	// Check for action keys 'r' and 'd'
@@ -265,9 +268,16 @@ func (m ManageModel) updateSelectMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.selectedItems[key] = !m.selectedItems[key]
 		}
 		return m, nil
+
+	case tea.KeyCtrlA:
+		return m.selectAll(), nil
 	}
 
 	switch msg.String() {
+	case "a":
+		return m.selectAll(), nil
+	case "A":
+		return m.deselectAll(), nil
 	case "/":
 		m.mode = modeSearch
 		m.search.Focus()
@@ -331,6 +341,18 @@ func (m ManageModel) updateResultsMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m ManageModel) selectAll() ManageModel {
+	for _, item := range m.filtered {
+		m.selectedItems[itemKey(item)] = true
+	}
+	return m
+}
+
+func (m ManageModel) deselectAll() ManageModel {
+	m.selectedItems = make(map[string]bool)
+	return m
 }
 
 func (m *ManageModel) executeAction() {
@@ -492,16 +514,16 @@ func (m ManageModel) viewSelect() string {
 	if m.mode == modeSearch {
 		selectedCount := len(m.selectedItems)
 		if selectedCount > 0 {
-			b.WriteString(helpStyle.Render(fmt.Sprintf("Esc clear • ↑/↓ nav • Tab select (%d) • r restore • d delete", selectedCount)))
+			b.WriteString(helpStyle.Render(fmt.Sprintf("Esc clear • ↑/↓ nav • Tab sel (%d) • Ctrl+a all • r rest • d del", selectedCount)))
 		} else {
-			b.WriteString(helpStyle.Render("Esc clear/exit • ↑/↓ navigate • Tab select • r restore • d delete"))
+			b.WriteString(helpStyle.Render("Esc clear/exit • ↑/↓ navigate • Tab select • Ctrl+a all • r restore • d delete"))
 		}
 	} else {
 		selectedCount := len(m.selectedItems)
 		if selectedCount > 0 {
-			b.WriteString(helpStyle.Render(fmt.Sprintf("↑/↓ nav • Tab select (%d) • / search • r restore • d delete • Esc cancel", selectedCount)))
+			b.WriteString(helpStyle.Render(fmt.Sprintf("↑/↓ nav • Tab sel (%d) • a/A all/none • / search • r rest • d del • Esc cancel", selectedCount)))
 		} else {
-			b.WriteString(helpStyle.Render("↑/↓ navigate • Tab select • / search • r restore • d delete • Esc cancel"))
+			b.WriteString(helpStyle.Render("↑/↓ navigate • Tab select • a/A all/none • / search • r restore • d delete • Esc cancel"))
 		}
 	}
 
