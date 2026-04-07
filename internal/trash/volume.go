@@ -10,6 +10,13 @@ import (
 	"time"
 )
 
+var mountsFilePath = "/proc/mounts"
+
+// SetMountsFilePath sets the path for mount points file (primarily for testing)
+func SetMountsFilePath(path string) {
+	mountsFilePath = path
+}
+
 // HomeTrashDir returns the default XDG trash directory
 func HomeTrashDir() (string, error) {
 	// Check XDG_DATA_HOME first
@@ -145,7 +152,13 @@ func checkSecureDir(path string) error {
 	// Verify ownership
 	if stat, ok := fi.Sys().(*syscall.Stat_t); ok {
 		if int(stat.Uid) != os.Getuid() {
-			return fmt.Errorf("directory not owned by current user: %s (owned by UID %d)", path, stat.Uid)
+			// For network/virtual filesystems, UID mismatch is common due to mapping.
+			// If the filesystem is non-local, we allow it because the user
+			// has effective access and it's their intended trash directory.
+			fstype, _ := getFsType(path)
+			if isLocalFilesystem(fstype) {
+				return fmt.Errorf("directory not owned by current user: %s (owned by UID %d)", path, stat.Uid)
+			}
 		}
 	}
 
@@ -155,6 +168,30 @@ func checkSecureDir(path string) error {
 	}
 
 	return nil
+}
+
+// getFsType returns the filesystem type for a given path
+func getFsType(path string) (string, error) {
+	mountPoint, err := getMountPoint(path)
+	if err != nil {
+		return "", err
+	}
+
+	mounts, err := os.Open(mountsFilePath)
+	if err != nil {
+		return "", err
+	}
+	defer mounts.Close()
+
+	scanner := bufio.NewScanner(mounts)
+	for scanner.Scan() {
+		fields := strings.Fields(scanner.Text())
+		if len(fields) >= 3 && fields[1] == mountPoint {
+			return fields[2], nil
+		}
+	}
+
+	return "unknown", nil
 }
 
 // EnsureTrashDir creates the trash directory structure if it doesn't exist
@@ -258,7 +295,7 @@ func GetAllTrashDirs() ([]string, error) {
 	dirs = append(dirs, homeTrash)
 
 	// Parse mount points from /proc/mounts
-	mounts, err := os.Open("/proc/mounts")
+	mounts, err := os.Open(mountsFilePath)
 	if err != nil {
 		// If /proc/mounts doesn't exist, just return home trash
 		return dirs, nil
@@ -285,8 +322,8 @@ func GetAllTrashDirs() ([]string, error) {
 		mountPoint := fields[1]
 		fstype := fields[2]
 
-		// Skip non-local filesystems (network, virtual, FUSE) to avoid blocking
-		if !isLocalFilesystem(fstype) {
+		// Skip virtual filesystems that definitely won't have trash to avoid noise
+		if nonLocalExact[fstype] && fstype != "tmpfs" {
 			continue
 		}
 

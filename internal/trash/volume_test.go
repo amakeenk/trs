@@ -1,6 +1,7 @@
 package trash
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -124,6 +125,28 @@ func TestSameFilesystem(t *testing.T) {
 	same, err := SameFilesystem(file1, file2)
 	require.NoError(t, err)
 	assert.True(t, same)
+}
+
+func TestGetFsType(t *testing.T) {
+	tmpDir := t.TempDir()
+	mountsFile := filepath.Join(tmpDir, "mounts")
+
+	// Create a mock mounts file
+	// We need to use a real mount point from the system for getMountPoint to work,
+	// or we can mock the whole thing.
+	// Let's use "/" which is always a mount point.
+	rootMount, err := getMountPoint("/")
+	require.NoError(t, err)
+
+	err = os.WriteFile(mountsFile, []byte(fmt.Sprintf("/dev/root %s ext4 rw 0 0\n", rootMount)), 0644)
+	require.NoError(t, err)
+
+	SetMountsFilePath(mountsFile)
+	defer SetMountsFilePath("/dev/null")
+
+	fstype, err := getFsType("/")
+	require.NoError(t, err)
+	assert.Equal(t, "ext4", fstype)
 }
 
 func TestGetTrashDirForPath(t *testing.T) {
