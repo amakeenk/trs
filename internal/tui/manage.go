@@ -387,13 +387,14 @@ func fuzzyMatch(s, query string) bool {
 		return true
 	}
 
+	queryRunes := []rune(query)
 	qi := 0
 	for _, c := range s {
-		if qi < len(query) && byte(c) == query[qi] {
+		if qi < len(queryRunes) && c == queryRunes[qi] {
 			qi++
 		}
 	}
-	return qi == len(query)
+	return qi == len(queryRunes)
 }
 
 func (m ManageModel) View() string {

@@ -288,6 +288,18 @@ func TestFilterItems(t *testing.T) {
 		require.Len(t, model.filtered, 1)
 		assert.Equal(t, "file1.txt", model.filtered[0].Name)
 	})
+
+	t.Run("cyrillic match", func(t *testing.T) {
+		cyrillicItems := []trash.TrashItem{
+			{Name: "документ.txt", OriginalPath: "/path/документ.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+		}
+		model := NewManageModel(cyrillicItems, false, nil)
+		model.search.SetValue("ок")
+		model.filterItems()
+
+		require.Len(t, model.filtered, 1)
+		assert.Equal(t, "документ.txt", model.filtered[0].Name)
+	})
 }
 
 func TestFilterItemsResetsSelection(t *testing.T) {
