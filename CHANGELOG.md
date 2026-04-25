@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-04-25
+
+### Added
+- Display file type in manage command preview
+- Update directory display format in manage list
+- Move item size from list row to details footer
+- Add trash statistics to manage command
+
 ## [0.10.0] - 2026-04-25
 
 ### Added
@@ -178,7 +186,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - github.com/spf13/cobra - CLI framework
 - github.com/stretchr/testify - Testing assertions
 
-[Unreleased]: https://altlinux.space/amakeenk/trs/compare/v0.10.0...HEAD
+[Unreleased]: https://altlinux.space/amakeenk/trs/compare/v0.11.0...HEAD
+[0.11.0]: https://altlinux.space/amakeenk/trs/compare/v0.10.0...v0.11.0
 [0.10.0]: https://altlinux.space/amakeenk/trs/compare/v0.9.0...v0.10.0
 [0.9.0]: https://altlinux.space/amakeenk/trs/compare/v0.8.0...v0.9.0
 [0.8.0]: https://altlinux.space/amakeenk/trs/compare/v0.7.0...v0.8.0
