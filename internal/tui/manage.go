@@ -205,22 +205,6 @@ func (m ManageModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.selectAll(), nil
 	}
 
-	// Check for action keys 'r' and 'd'
-	switch msg.String() {
-	case "r":
-		if len(m.SelectedItems()) > 0 {
-			m.action = ActionRestore
-			m.mode = modeConfirm
-			return m, nil
-		}
-	case "d":
-		if len(m.SelectedItems()) > 0 {
-			m.action = ActionDelete
-			m.mode = modeConfirm
-			return m, nil
-		}
-	}
-
 	var cmd tea.Cmd
 	m.search, cmd = m.search.Update(msg)
 	m.filterItems()
@@ -514,9 +498,9 @@ func (m ManageModel) viewSelect() string {
 	if m.mode == modeSearch {
 		selectedCount := len(m.selectedItems)
 		if selectedCount > 0 {
-			b.WriteString(helpStyle.Render(fmt.Sprintf("Esc clear • ↑/↓ nav • Tab sel (%d) • Ctrl+a all • r rest • d del", selectedCount)))
+			b.WriteString(helpStyle.Render(fmt.Sprintf("Esc clear • ↑/↓ nav • Tab sel (%d) • Ctrl+a all", selectedCount)))
 		} else {
-			b.WriteString(helpStyle.Render("Esc clear/exit • ↑/↓ navigate • Tab select • Ctrl+a all • r rest cur • d del cur"))
+			b.WriteString(helpStyle.Render("Esc clear/exit • ↑/↓ navigate • Tab select • Ctrl+a all"))
 		}
 	} else {
 		selectedCount := len(m.selectedItems)
