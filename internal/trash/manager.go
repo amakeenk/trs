@@ -19,6 +19,7 @@ type TrashItem struct {
 	Size         int64     // Size in bytes
 	IsDir        bool      // Is directory
 	TrashDir     string    // Trash directory containing this item
+	FileCount    int       // Number of files (for directories, includes nested files)
 }
 
 type ItemType int
@@ -515,6 +516,9 @@ func (m *Manager) ListFromDir(trashDir string) ([]TrashItem, error) {
 			size = info.Size()
 		}
 
+		// Calculate file count
+		fileCount, _ := root.CountFiles(entry.Name())
+
 		items = append(items, TrashItem{
 			Name:         entry.Name(),
 			OriginalPath: ti.Path,
@@ -522,6 +526,7 @@ func (m *Manager) ListFromDir(trashDir string) ([]TrashItem, error) {
 			Size:         size,
 			IsDir:        entry.IsDir(),
 			TrashDir:     trashDir,
+			FileCount:    fileCount,
 		})
 	}
 

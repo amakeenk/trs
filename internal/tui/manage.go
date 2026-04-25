@@ -495,6 +495,23 @@ func (m ManageModel) viewSelect() string {
 		b.WriteString(previewStyle.Render("Deleted:  " + item.DeletionDate.Format("2006-01-02 15:04")))
 	}
 
+	// Add trash statistics
+	filesCount := 0
+	foldersCount := 0
+	totalFiles := 0
+	for _, item := range m.items {
+		if item.IsDir {
+			foldersCount++
+		} else {
+			filesCount++
+		}
+		totalFiles += item.FileCount
+	}
+
+	b.WriteString("\n\n")
+	b.WriteString(helpStyle.Render(fmt.Sprintf("Файлов: %d  Папок: %d  Всего файлов: %d",
+		filesCount, foldersCount, totalFiles)))
+
 	b.WriteString("\n")
 	if m.mode == modeSearch {
 		selectedCount := len(m.selectedItems)

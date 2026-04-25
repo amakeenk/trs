@@ -98,6 +98,45 @@ func (tr *TrashRoot) MkdirInfo() error {
 	return tr.root.Mkdir("info", 0700)
 }
 
+// CountFiles returns the number of files in a trashed item.
+// If it's a directory, it recursively counts all files inside.
+func (tr *TrashRoot) CountFiles(name string) (int, error) {
+	return tr.countFiles(tr.FilesPath(name))
+}
+
+func (tr *TrashRoot) countFiles(relPath string) (int, error) {
+	info, err := tr.root.Lstat(relPath)
+	if err != nil {
+		return 0, err
+	}
+
+	if !info.IsDir() {
+		return 1, nil
+	}
+
+	f, err := tr.root.Open(relPath)
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+
+	entries, err := f.ReadDir(-1)
+	if err != nil {
+		return 0, err
+	}
+
+	count := 0
+	for _, entry := range entries {
+		c, err := tr.countFiles(relPath + "/" + entry.Name())
+		if err != nil {
+			return count, err
+		}
+		count += c
+	}
+
+	return count, nil
+}
+
 // RemoveAllFiles recursively removes a file or directory from files/.
 // Unlike os.RemoveAll, this uses os.Root operations which are
 // traversal-resistant - symlinks cannot escape the root.
@@ -122,8 +161,6 @@ func (tr *TrashRoot) removeAll(relPath string) error {
 	}
 
 	// For directories, we need to remove contents first
-	// Open the directory using root (traversal-resistant)
-	// Open the directory using root (traversal-resistant)
 	f, err := tr.root.Open(relPath)
 	if err != nil {
 		return err
