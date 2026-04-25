@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"altlinux.space/amakeenk/trs/internal/trash"
@@ -76,10 +77,11 @@ func outputJSON(items []trash.TrashItem) {
 }
 
 const (
-	colIndexWidth   = 6
-	colNameWidth    = 60
-	colSizeWidth    = 10
-	colDeletedWidth = 17
+	colIndexWidth    = 5
+	colNameWidth     = 60
+	colOriginalWidth = 70
+	colSizeWidth     = 10
+	colDeletedWidth  = 17
 )
 
 func formatColumn(s string, width int) string {
@@ -103,19 +105,23 @@ func formatColumn(s string, width int) string {
 }
 
 func outputTable(items []trash.TrashItem) {
-	header := fmt.Sprintf("%s  %s  %s  %s",
+	header := fmt.Sprintf("%s  %s  %s  %s  %s",
 		ui.BoldText(formatColumn("#", colIndexWidth)),
 		ui.BoldText(formatColumn("NAME", colNameWidth)),
+		ui.BoldText(formatColumn("ORIGINAL", colOriginalWidth)),
 		ui.BoldText(formatColumn("SIZE", colSizeWidth)),
 		ui.BoldText(formatColumn("DELETED", colDeletedWidth)),
 	)
 	fmt.Println(header)
-	fmt.Printf("%s  %s  %s  %s\n",
+	fmt.Printf("%s  %s  %s  %s  %s\n",
 		strings.Repeat("─", colIndexWidth),
 		strings.Repeat("─", colNameWidth),
+		strings.Repeat("─", colOriginalWidth),
 		strings.Repeat("─", colSizeWidth),
 		strings.Repeat("─", colDeletedWidth),
 	)
+
+	homeDir, _ := os.UserHomeDir()
 
 	for i, item := range items {
 		name := ui.Truncate(item.Name, colNameWidth-1)
@@ -125,9 +131,18 @@ func outputTable(items []trash.TrashItem) {
 			name = formatColumn(name, colNameWidth)
 		}
 
-		row := fmt.Sprintf("%s  %s  %s  %s",
+		origPath := item.OriginalPath
+		if homeDir != "" && strings.HasPrefix(origPath, homeDir) {
+			origPath = "~" + strings.TrimPrefix(origPath, homeDir)
+		}
+
+		orig := ui.Truncate(origPath, colOriginalWidth-1)
+		orig = formatColumn(orig, colOriginalWidth)
+
+		row := fmt.Sprintf("%s  %s  %s  %s  %s",
 			formatColumn(fmt.Sprintf("%d", i+1), colIndexWidth),
 			name,
+			orig,
 			formatColumn(ui.FormatSize(item.Size), colSizeWidth),
 			formatColumn(item.DeletionDate.Format("2006-01-02 15:04"), colDeletedWidth),
 		)
