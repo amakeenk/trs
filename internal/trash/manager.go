@@ -142,6 +142,25 @@ func (m *Manager) movePath(src, dst string) error {
 	return err
 }
 
+// movePathNoReplace is like movePath but guarantees no overwrite (atomically on Linux)
+func (m *Manager) movePathNoReplace(src, dst string) error {
+	err := renameNoReplace(src, dst)
+	if err == nil {
+		return nil
+	}
+
+	if isCrossDeviceError(err) {
+		// For cross-device move, we still have a TOCTOU window here,
+		// but we do a final check before copying.
+		if _, statErr := os.Lstat(dst); statErr == nil {
+			return os.ErrExist
+		}
+		return m.copyAndDelete(src, dst)
+	}
+
+	return err
+}
+
 func (m *Manager) movePathVerbose(src, dst string, info os.FileInfo, itemType ItemType) error {
 	if m.verboseCallback != nil && info.IsDir() {
 		type item struct {
@@ -634,8 +653,14 @@ func (m *Manager) RestoreFromDir(trashDir, trashName string, overwrite bool) err
 	}
 
 	// Move back
-	if err := m.movePath(srcPath, ti.Path); err != nil {
-		return fmt.Errorf("restore: %w", err)
+	var moveErr error
+	if !overwrite {
+		moveErr = m.movePathNoReplace(srcPath, ti.Path)
+	} else {
+		moveErr = m.movePath(srcPath, ti.Path)
+	}
+	if moveErr != nil {
+		return fmt.Errorf("restore: %w", moveErr)
 	}
 
 	// Remove trashinfo
