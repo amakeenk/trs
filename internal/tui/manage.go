@@ -444,7 +444,7 @@ func (m ManageModel) viewSelect() string {
 				check = checkedStyle.Render("✓")
 			}
 
-			line := fmt.Sprintf("[%s] %s  %s", check, ui.FormatSize(item.Size), name)
+			line := fmt.Sprintf("[%s] %s", check, name)
 
 			if i == m.selected {
 				line = "▶ " + selectedStyle.Render(line)
@@ -493,6 +493,8 @@ func (m ManageModel) viewSelect() string {
 		b.WriteString(previewStyle.Render("Original: " + item.OriginalPath))
 		b.WriteString("\n")
 		b.WriteString(previewStyle.Render("Deleted:  " + item.DeletionDate.Format("2006-01-02 15:04")))
+		b.WriteString("\n")
+		b.WriteString(previewStyle.Render(fmt.Sprintf("Size:     %s", ui.FormatSize(item.Size))))
 	}
 
 	// Add trash statistics
