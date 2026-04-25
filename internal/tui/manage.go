@@ -434,9 +434,15 @@ func (m ManageModel) viewSelect() string {
 
 		for i := start; i < end; i++ {
 			item := m.filtered[i]
-			name := item.Name
+			displayName := item.Name
 			if item.IsDir {
-				name = dirStyle.Render(name + "/")
+				displayName = fmt.Sprintf("%s (%d)", displayName, item.FileCount)
+			}
+
+			// Render name with appropriate style
+			styledName := displayName
+			if item.IsDir {
+				styledName = dirStyle.Render(displayName)
 			}
 
 			check := " "
@@ -444,7 +450,7 @@ func (m ManageModel) viewSelect() string {
 				check = checkedStyle.Render("✓")
 			}
 
-			line := fmt.Sprintf("[%s] %s", check, name)
+			line := fmt.Sprintf("[%s] %s", check, styledName)
 
 			if i == m.selected {
 				line = "▶ " + selectedStyle.Render(line)
@@ -470,7 +476,7 @@ func (m ManageModel) viewSelect() string {
 			if m.selectedItems[itemKey(item)] {
 				name := item.Name
 				if item.IsDir {
-					name = dirStyle.Render(name + "/")
+					name = dirStyle.Render(fmt.Sprintf("%s (%d)", name, item.FileCount))
 				}
 				b.WriteString(previewStyle.Render("  • " + name))
 				b.WriteString("\n")
