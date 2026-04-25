@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-04-25
+
+### Added
+- Support XDG spec for `.Trash/$UID` volume directories
+- ORIGINAL column in `trs list` output
+
+### Fixed
+- Resolve TOCTOU race condition during file restoration
+- Recreate symlinks across devices instead of failing
+- Correctly handle unicode characters in TUI search
+- Prevent `r` and `d` hotkeys from interrupting search input in TUI
+- Ignore non-existent files correctly with `--force` flag
+- Allow trashing files on network filesystems with mapped UIDs
+
 ## [0.9.0] - 2026-04-03
 
 ### Added
@@ -164,7 +178,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - github.com/spf13/cobra - CLI framework
 - github.com/stretchr/testify - Testing assertions
 
-[Unreleased]: https://altlinux.space/amakeenk/trs/compare/v0.9.0...HEAD
+[Unreleased]: https://altlinux.space/amakeenk/trs/compare/v0.10.0...HEAD
+[0.10.0]: https://altlinux.space/amakeenk/trs/compare/v0.9.0...v0.10.0
 [0.9.0]: https://altlinux.space/amakeenk/trs/compare/v0.8.0...v0.9.0
 [0.8.0]: https://altlinux.space/amakeenk/trs/compare/v0.7.0...v0.8.0
 [0.7.0]: https://altlinux.space/amakeenk/trs/compare/v0.6.0...v0.7.0
