@@ -13,13 +13,34 @@ import (
 
 // TrashItem represents a file in the trash
 type TrashItem struct {
-	Name         string    // Name in trash
-	OriginalPath string    // Original absolute path
-	DeletionDate time.Time // When it was trashed
-	Size         int64     // Size in bytes
-	IsDir        bool      // Is directory
-	TrashDir     string    // Trash directory containing this item
-	FileCount    int       // Number of files (for directories, includes nested files)
+	Name         string      // Name in trash
+	OriginalPath string      // Original absolute path
+	DeletionDate time.Time   // When it was trashed
+	Size         int64       // Size in bytes
+	Mode         os.FileMode // File mode/type
+	IsDir        bool        // Is directory
+	TrashDir     string      // Trash directory containing this item
+	FileCount    int         // Number of files (for directories, includes nested files)
+}
+
+// TypeString returns a human-readable string of the item type
+func (t TrashItem) TypeString() string {
+	if t.Mode&os.ModeSymlink != 0 {
+		return "symbolic link"
+	}
+	if t.IsDir {
+		return "directory"
+	}
+	if t.Mode&os.ModeDevice != 0 {
+		return "device"
+	}
+	if t.Mode&os.ModeNamedPipe != 0 {
+		return "FIFO (pipe)"
+	}
+	if t.Mode&os.ModeSocket != 0 {
+		return "socket"
+	}
+	return "file"
 }
 
 type ItemType int
@@ -524,6 +545,7 @@ func (m *Manager) ListFromDir(trashDir string) ([]TrashItem, error) {
 			OriginalPath: ti.Path,
 			DeletionDate: ti.DeletionDate,
 			Size:         size,
+			Mode:         info.Mode(),
 			IsDir:        entry.IsDir(),
 			TrashDir:     trashDir,
 			FileCount:    fileCount,

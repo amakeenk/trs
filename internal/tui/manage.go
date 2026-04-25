@@ -501,6 +501,8 @@ func (m ManageModel) viewSelect() string {
 		b.WriteString(previewStyle.Render("Deleted:  " + item.DeletionDate.Format("2006-01-02 15:04")))
 		b.WriteString("\n")
 		b.WriteString(previewStyle.Render(fmt.Sprintf("Size:     %s", ui.FormatSize(item.Size))))
+		b.WriteString("\n")
+		b.WriteString(previewStyle.Render(fmt.Sprintf("Type:     %s", item.TypeString())))
 	}
 
 	// Add trash statistics

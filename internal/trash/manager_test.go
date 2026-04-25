@@ -101,6 +101,14 @@ func TestManager_MoveSymlink(t *testing.T) {
 	info, err := os.Lstat(trashPath)
 	require.NoError(t, err)
 	assert.True(t, info.Mode()&os.ModeSymlink != 0)
+
+	// Verify List shows it as symlink
+	items, err := mgr.List()
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	assert.Equal(t, "link.txt", items[0].Name)
+	assert.True(t, items[0].Mode&os.ModeSymlink != 0)
+	assert.Equal(t, "symbolic link", items[0].TypeString())
 }
 
 func TestManager_MoveNameConflict(t *testing.T) {
@@ -163,6 +171,12 @@ func TestManager_List(t *testing.T) {
 	// Verify sorted newest first
 	assert.Equal(t, "file2.txt", items[0].Name)
 	assert.Equal(t, "file1.txt", items[1].Name)
+
+	// Verify Mode and IsDir
+	assert.False(t, items[0].IsDir)
+	assert.False(t, items[1].IsDir)
+	assert.True(t, items[0].Mode.IsRegular())
+	assert.True(t, items[1].Mode.IsRegular())
 }
 
 func TestManager_Restore(t *testing.T) {
@@ -829,4 +843,49 @@ func TestManager_DeleteNotFound(t *testing.T) {
 	err = mgr.Delete("nonexistent.txt")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "file not in trash")
+}
+
+func TestTrashItem_TypeString(t *testing.T) {
+	tests := []struct {
+		name     string
+		item     TrashItem
+		expected string
+	}{
+		{
+			name: "regular file",
+			item: TrashItem{Mode: 0, IsDir: false},
+			expected: "file",
+		},
+		{
+			name: "directory",
+			item: TrashItem{Mode: os.ModeDir, IsDir: true},
+			expected: "directory",
+		},
+		{
+			name: "symlink",
+			item: TrashItem{Mode: os.ModeSymlink, IsDir: false},
+			expected: "symbolic link",
+		},
+		{
+			name: "device",
+			item: TrashItem{Mode: os.ModeDevice, IsDir: false},
+			expected: "device",
+		},
+		{
+			name: "named pipe",
+			item: TrashItem{Mode: os.ModeNamedPipe, IsDir: false},
+			expected: "FIFO (pipe)",
+		},
+		{
+			name: "socket",
+			item: TrashItem{Mode: os.ModeSocket, IsDir: false},
+			expected: "socket",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, tt.item.TypeString())
+		})
+	}
 }
