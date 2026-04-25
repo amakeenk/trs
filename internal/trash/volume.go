@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -65,6 +66,16 @@ func VolumeTrashDir(path string) (string, error) {
 
 	// Different filesystem, use volume trash
 	uid := os.Getuid()
+
+	// Check for .Trash/$UID (XDG Spec)
+	dotTrash := filepath.Join(mountPoint, ".Trash")
+	if fi, err := os.Lstat(dotTrash); err == nil && fi.IsDir() {
+		// Ensure it has the sticky bit set and is not a symlink
+		if fi.Mode()&os.ModeSticky != 0 && fi.Mode()&os.ModeSymlink == 0 {
+			return filepath.Join(dotTrash, strconv.Itoa(uid)), nil
+		}
+	}
+
 	volumeTrash := filepath.Join(mountPoint, fmt.Sprintf(".Trash-%d", uid))
 
 	return volumeTrash, nil
@@ -333,7 +344,18 @@ func GetAllTrashDirs() ([]string, error) {
 		}
 		seen[mountPoint] = true
 
-		// Check for volume trash directory with timeout
+		// Check for .Trash/$UID directory (XDG Spec) with timeout
+		dotTrash := filepath.Join(mountPoint, ".Trash")
+		if fi, err := statWithTimeout(dotTrash, 2*time.Second); err == nil && fi.IsDir() {
+			if fi.Mode()&os.ModeSticky != 0 && fi.Mode()&os.ModeSymlink == 0 {
+				volumeTrashXDG := filepath.Join(dotTrash, strconv.Itoa(uid))
+				if fi2, err2 := statWithTimeout(volumeTrashXDG, 2*time.Second); err2 == nil && fi2.IsDir() {
+					dirs = append(dirs, volumeTrashXDG)
+				}
+			}
+		}
+
+		// Check for .Trash-$UID volume trash directory with timeout
 		volumeTrash := filepath.Join(mountPoint, fmt.Sprintf(".Trash-%d", uid))
 		if fi, err := statWithTimeout(volumeTrash, 2*time.Second); err == nil && fi.IsDir() {
 			dirs = append(dirs, volumeTrash)

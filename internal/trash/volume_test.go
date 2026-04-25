@@ -40,7 +40,7 @@ func TestHomeTrashDir(t *testing.T) {
 func TestGetMountPointWithNonExistentPath(t *testing.T) {
 	// This should walk up to find an existing parent
 	mount, err := getMountPoint("/nonexistent/deeply/nested/path/that/does/not/exist")
- require.NoError(t, err)
+	require.NoError(t, err)
 	// Should return a valid mount point (likely "/")
 	assert.NotEmpty(t, mount)
 }
@@ -48,7 +48,7 @@ func TestGetMountPointWithNonExistentPath(t *testing.T) {
 // TestSameFilesystemWithNonExistent tests SameFilesystem with non-existent path
 func TestSameFilesystemWithNonExistent(t *testing.T) {
 	_, err := SameFilesystem("/nonexistent/path1", "/nonexistent/path2")
- require.Error(t, err)
+	require.Error(t, err)
 }
 
 // TestEnsureTrashDirWithSymlink tests EnsureTrashDir rejects symlinks
@@ -62,13 +62,12 @@ func TestEnsureTrashDirWithSymlink(t *testing.T) {
 	require.NoError(t, os.MkdirAll(targetDir, 0700))
 
 	symlinkDir := filepath.Join(tmpDir, "symlink_trash")
- require.NoError(t, os.Symlink(targetDir, symlinkDir))
+	require.NoError(t, os.Symlink(targetDir, symlinkDir))
 
 	err := EnsureTrashDir(symlinkDir)
- require.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "symlink")
 }
-
 
 func TestEnsureTrashDir(t *testing.T) {
 	trashDir := t.TempDir() + "/Trash"

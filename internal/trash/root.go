@@ -98,7 +98,6 @@ func (tr *TrashRoot) MkdirInfo() error {
 	return tr.root.Mkdir("info", 0700)
 }
 
-
 // RemoveAllFiles recursively removes a file or directory from files/.
 // Unlike os.RemoveAll, this uses os.Root operations which are
 // traversal-resistant - symlinks cannot escape the root.
