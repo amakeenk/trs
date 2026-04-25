@@ -197,6 +197,18 @@ func (m *Manager) copyAndDelete(src, dst string) error {
 		return m.copyDirAndDelete(src, dst)
 	}
 
+	if info.Mode()&os.ModeSymlink != 0 {
+		target, err := os.Readlink(src)
+		if err != nil {
+			return err
+		}
+		if err := os.Symlink(target, dst); err != nil {
+			os.Remove(dst)
+			return err
+		}
+		return os.Remove(src)
+	}
+
 	if err := copyFile(src, dst); err != nil {
 		os.Remove(dst)
 		return err
@@ -219,12 +231,25 @@ func (m *Manager) copyAndDeleteVerbose(src, dst string, info os.FileInfo) error 
 	}
 
 	itemType := ItemTypeFile
-	if info.Mode()&os.ModeSymlink != 0 {
+	isSymlink := info.Mode()&os.ModeSymlink != 0
+	if isSymlink {
 		itemType = ItemTypeSymlink
 	}
 
 	if m.verboseCallback != nil {
 		m.verboseCallback(src, itemType)
+	}
+
+	if isSymlink {
+		target, err := os.Readlink(src)
+		if err != nil {
+			return err
+		}
+		if err := os.Symlink(target, dst); err != nil {
+			os.Remove(dst)
+			return err
+		}
+		return os.Remove(src)
 	}
 
 	if err := copyFile(src, dst); err != nil {
