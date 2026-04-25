@@ -1197,6 +1197,7 @@ func TestTrashFileWithForceFlag(t *testing.T) {
 	err = trashFile(mgr, "/nonexistent/file.txt")
 	// The error is still returned, but force affects runTrash handling
 	assert.Error(t, err)
+	assert.ErrorIs(t, err, os.ErrNotExist)
 }
 
 // TestOutputTableWithDirectory tests outputTable with a directory
@@ -1611,6 +1612,36 @@ func TestRunTrashWithErrors(t *testing.T) {
 	} else {
 		t.Fatalf("expected exit error, got: %v", err)
 	}
+}
+
+// TestRunTrashWithForce tests runTrash with force flag (ignores missing files)
+func TestRunTrashWithForce(t *testing.T) {
+	if os.Getenv("GO_TEST_TRASH_FORCE") == "1" {
+		setupTestEnv(t)
+
+		// Save flags
+		oldForce := flagForce
+		oldJSON := flagJSON
+		oldVerbose := flagVerbose
+		flagForce = true
+		flagJSON = false
+		flagVerbose = false
+		defer func() {
+			flagForce = oldForce
+			flagJSON = oldJSON
+			flagVerbose = oldVerbose
+		}()
+
+		cmd := NewListCmd()
+		runTrash(cmd, []string{"/nonexistent/path/file.txt"})
+		return // Should return normally without calling os.Exit(1)
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestRunTrashWithForce")
+	cmd.Env = append(os.Environ(), "GO_TEST_TRASH_FORCE=1")
+	err := cmd.Run()
+
+	assert.NoError(t, err, "runTrash should not exit with error when -f is used for missing files")
 }
 
 // TestRunTrashWithJSONErrors tests runTrash with JSON output and errors

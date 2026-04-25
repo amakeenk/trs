@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
@@ -55,7 +56,7 @@ func runTrash(cmd *cobra.Command, args []string) {
 		err := trashFile(mgr, path)
 
 		if err != nil {
-			if os.IsNotExist(err) && flagForce {
+			if errors.Is(err, os.ErrNotExist) && flagForce {
 				continue // Ignore missing files with -f
 			}
 			result.Errors = append(result.Errors, err.Error())
@@ -84,11 +85,23 @@ func runTrash(cmd *cobra.Command, args []string) {
 	}
 }
 
+type pathNotExistError struct {
+	Path string
+}
+
+func (e *pathNotExistError) Error() string {
+	return fmt.Sprintf("cannot trash '%s': No such file or directory", e.Path)
+}
+
+func (e *pathNotExistError) Unwrap() error {
+	return os.ErrNotExist
+}
+
 func trashFile(mgr *trash.Manager, path string) error {
 	info, err := os.Lstat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("cannot trash '%s': No such file or directory", path)
+			return &pathNotExistError{Path: path}
 		}
 		return fmt.Errorf("cannot trash '%s': %w", path, err)
 	}
