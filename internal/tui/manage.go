@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"altlinux.space/amakeenk/trs/internal/trash"
@@ -18,6 +19,15 @@ const (
 	modeSearch
 	modeConfirm
 	modeResults
+)
+
+type sortMode int
+
+const (
+	sortByDeletionDate sortMode = iota
+	sortByName
+	sortBySize
+	sortByFileCount
 )
 
 // ActionType represents the type of action performed
@@ -50,6 +60,9 @@ type ManageModel struct {
 	force         bool
 	manager       *trash.Manager
 	results       []ActionResult
+	sortMode      sortMode
+	sortAsc       bool
+	sorted        bool
 }
 
 var (
@@ -112,16 +125,21 @@ func NewManageModel(items []trash.TrashItem, force bool, manager *trash.Manager)
 	ti.CharLimit = 100
 	ti.Width = 50
 
-	return ManageModel{
+	m := ManageModel{
 		items:         items,
-		filtered:      items,
+		filtered:      make([]trash.TrashItem, len(items)),
 		search:        ti,
 		selected:      0,
 		selectedItems: make(map[string]bool),
 		mode:          modeSelect,
 		force:         force,
 		manager:       manager,
+		sortMode:      sortByDeletionDate,
+		sortAsc:       false,
 	}
+	copy(m.filtered, items)
+	m.applySort()
+	return m
 }
 
 func (m ManageModel) Init() tea.Cmd {
@@ -151,7 +169,8 @@ func (m ManageModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyEsc:
 		if m.search.Value() != "" {
 			m.search.SetValue("")
-			m.filtered = m.items
+			m.filtered = make([]trash.TrashItem, len(m.items))
+			copy(m.filtered, m.items)
 			m.selected = 0
 			return m, nil
 		}
@@ -266,6 +285,12 @@ func (m ManageModel) updateSelectMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.mode = modeSearch
 		m.search.Focus()
 		return m, nil
+	case "s":
+		m.cycleSortMode()
+		return m, nil
+	case "S":
+		m.toggleSortDirection()
+		return m, nil
 	case "r":
 		if len(m.SelectedItems()) > 0 {
 			m.action = ActionRestore
@@ -365,10 +390,89 @@ func (m *ManageModel) executeAction() {
 	}
 }
 
+func sortItems(items []trash.TrashItem, mode sortMode, asc bool) []trash.TrashItem {
+	sorted := make([]trash.TrashItem, len(items))
+	copy(sorted, items)
+
+	sort.SliceStable(sorted, func(i, j int) bool {
+		var less bool
+		switch mode {
+		case sortByDeletionDate:
+			less = sorted[i].DeletionDate.Before(sorted[j].DeletionDate)
+		case sortByName:
+			less = sorted[i].Name < sorted[j].Name
+		case sortBySize:
+			less = sorted[i].Size < sorted[j].Size
+		case sortByFileCount:
+			less = sorted[i].FileCount < sorted[j].FileCount
+		default:
+			less = sorted[i].DeletionDate.Before(sorted[j].DeletionDate)
+		}
+		if !asc {
+			return !less
+		}
+		return less
+	})
+
+	return sorted
+}
+
+func (m *ManageModel) applySort() {
+	m.items = sortItems(m.items, m.sortMode, m.sortAsc)
+	m.filterItems()
+}
+
+func (m *ManageModel) cycleSortMode() {
+	switch m.sortMode {
+	case sortByDeletionDate:
+		m.sortMode = sortByName
+		m.sortAsc = true
+	case sortByName:
+		m.sortMode = sortBySize
+		m.sortAsc = false
+	case sortBySize:
+		m.sortMode = sortByFileCount
+		m.sortAsc = false
+	case sortByFileCount:
+		m.sortMode = sortByDeletionDate
+		m.sortAsc = false
+	}
+	m.applySort()
+	m.selected = 0
+}
+
+func (m *ManageModel) toggleSortDirection() {
+	m.sortAsc = !m.sortAsc
+	m.applySort()
+	m.selected = 0
+}
+
+func (m ManageModel) sortLabel() string {
+	var name string
+	switch m.sortMode {
+	case sortByDeletionDate:
+		name = "Date"
+	case sortByName:
+		name = "Name"
+	case sortBySize:
+		name = "Size"
+	case sortByFileCount:
+		name = "Count"
+	}
+
+	direction := "↓"
+	if m.sortAsc {
+		direction = "↑"
+	}
+
+	return fmt.Sprintf("Sort: %s %s", name, direction)
+}
+
 func (m *ManageModel) filterItems() {
 	query := strings.ToLower(m.search.Value())
 	if query == "" {
-		m.filtered = m.items
+		m.filtered = make([]trash.TrashItem, len(m.items))
+		copy(m.filtered, m.items)
 		return
 	}
 
@@ -519,23 +623,23 @@ func (m ManageModel) viewSelect() string {
 	}
 
 	b.WriteString("\n\n")
-	b.WriteString(helpStyle.Render(fmt.Sprintf("Файлов: %d  Папок: %d  Всего файлов: %d",
-		filesCount, foldersCount, totalFiles)))
+	b.WriteString(helpStyle.Render(fmt.Sprintf("%s  •  Файлов: %d  Папок: %d  Всего файлов: %d",
+		m.sortLabel(), filesCount, foldersCount, totalFiles)))
 
 	b.WriteString("\n")
 	if m.mode == modeSearch {
 		selectedCount := len(m.selectedItems)
 		if selectedCount > 0 {
-			b.WriteString(helpStyle.Render(fmt.Sprintf("Esc clear • ↑/↓ nav • Tab sel (%d) • Ctrl+a all", selectedCount)))
+			b.WriteString(helpStyle.Render(fmt.Sprintf("Esc clear • ↑/↓ nav • Tab sel (%d) • s/S sort • Ctrl+a all", selectedCount)))
 		} else {
-			b.WriteString(helpStyle.Render("Esc clear/exit • ↑/↓ navigate • Tab select • Ctrl+a all"))
+			b.WriteString(helpStyle.Render("Esc clear/exit • ↑/↓ navigate • Tab select • s/S sort • Ctrl+a all"))
 		}
 	} else {
 		selectedCount := len(m.selectedItems)
 		if selectedCount > 0 {
-			b.WriteString(helpStyle.Render(fmt.Sprintf("↑/↓ nav • Tab sel (%d) • a/A all/none • / search • r rest • d del • Esc cancel", selectedCount)))
+			b.WriteString(helpStyle.Render(fmt.Sprintf("↑/↓ nav • Tab sel (%d) • a/A all/none • s/S sort • / search • r rest • d del • Esc cancel", selectedCount)))
 		} else {
-			b.WriteString(helpStyle.Render("↑/↓ navigate • Tab select • a/A all/none • / search • r rest cur • d del cur • Esc cancel"))
+			b.WriteString(helpStyle.Render("↑/↓ navigate • Tab select • a/A all/none • s/S sort • / search • r rest • d del • Esc cancel"))
 		}
 	}
 

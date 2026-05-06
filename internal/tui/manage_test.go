@@ -12,10 +12,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func makeTime(offset int) time.Time {
+	return time.Date(2025, 1, 1, 12, 0, offset, 0, time.UTC)
+}
+
 func TestNewManageModel(t *testing.T) {
 	items := []trash.TrashItem{
-		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
-		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: time.Now(), Size: 200, IsDir: false},
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: makeTime(1), Size: 100, IsDir: false},
+		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: makeTime(0), Size: 200, IsDir: false},
 	}
 
 	model := NewManageModel(items, false, nil)
@@ -30,7 +34,7 @@ func TestNewManageModel(t *testing.T) {
 
 func TestNewManageModelWithForce(t *testing.T) {
 	items := []trash.TrashItem{
-		{Name: "file.txt", OriginalPath: "/path/to/file.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+		{Name: "file.txt", OriginalPath: "/path/to/file.txt", DeletionDate: makeTime(1), Size: 100, IsDir: false},
 	}
 
 	model := NewManageModel(items, true, nil)
@@ -40,9 +44,9 @@ func TestNewManageModelWithForce(t *testing.T) {
 
 func TestManageModelSelectAll(t *testing.T) {
 	items := []trash.TrashItem{
-		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
-		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: time.Now(), Size: 200, IsDir: false},
-		{Name: "other.txt", OriginalPath: "/path/to/other.txt", DeletionDate: time.Now(), Size: 300, IsDir: false},
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: makeTime(2), Size: 100, IsDir: false},
+		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: makeTime(3), Size: 200, IsDir: false},
+		{Name: "other.txt", OriginalPath: "/path/to/other.txt", DeletionDate: makeTime(4), Size: 300, IsDir: false},
 	}
 
 	t.Run("select all with 'a'", func(t *testing.T) {
@@ -101,7 +105,7 @@ func TestManageModelSelectAll(t *testing.T) {
 
 func TestManageModelInit(t *testing.T) {
 	items := []trash.TrashItem{
-		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: makeTime(5), Size: 100, IsDir: false},
 	}
 	model := NewManageModel(items, false, nil)
 	cmd := model.Init()
@@ -111,8 +115,8 @@ func TestManageModelInit(t *testing.T) {
 
 func TestManageModelSelectedItem(t *testing.T) {
 	items := []trash.TrashItem{
-		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
-		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: time.Now(), Size: 200, IsDir: false},
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: makeTime(2), Size: 100, IsDir: false},
+		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: makeTime(1), Size: 200, IsDir: false},
 	}
 
 	t.Run("valid selection", func(t *testing.T) {
@@ -145,7 +149,7 @@ func TestManageModelSelectedItem(t *testing.T) {
 
 func TestManageModelConfirmed(t *testing.T) {
 	items := []trash.TrashItem{
-		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: makeTime(8), Size: 100, IsDir: false},
 	}
 	model := NewManageModel(items, false, nil)
 	assert.False(t, model.Confirmed())
@@ -156,7 +160,7 @@ func TestManageModelConfirmed(t *testing.T) {
 
 func TestManageModelCancelled(t *testing.T) {
 	items := []trash.TrashItem{
-		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: makeTime(9), Size: 100, IsDir: false},
 	}
 	model := NewManageModel(items, false, nil)
 	assert.False(t, model.Cancelled())
@@ -240,9 +244,9 @@ func TestFuzzyMatch(t *testing.T) {
 
 func TestFilterItems(t *testing.T) {
 	items := []trash.TrashItem{
-		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
-		{Name: "document.pdf", OriginalPath: "/path/to/document.pdf", DeletionDate: time.Now(), Size: 200, IsDir: false},
-		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: time.Now(), Size: 300, IsDir: false},
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: makeTime(3), Size: 100, IsDir: false},
+		{Name: "document.pdf", OriginalPath: "/path/to/document.pdf", DeletionDate: makeTime(2), Size: 200, IsDir: false},
+		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: makeTime(1), Size: 300, IsDir: false},
 	}
 
 	t.Run("empty query shows all", func(t *testing.T) {
@@ -291,7 +295,7 @@ func TestFilterItems(t *testing.T) {
 
 	t.Run("cyrillic match", func(t *testing.T) {
 		cyrillicItems := []trash.TrashItem{
-			{Name: "документ.txt", OriginalPath: "/path/документ.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+			{Name: "документ.txt", OriginalPath: "/path/документ.txt", DeletionDate: makeTime(13), Size: 100, IsDir: false},
 		}
 		model := NewManageModel(cyrillicItems, false, nil)
 		model.search.SetValue("ок")
@@ -304,8 +308,8 @@ func TestFilterItems(t *testing.T) {
 
 func TestFilterItemsResetsSelection(t *testing.T) {
 	items := []trash.TrashItem{
-		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
-		{Name: "document.pdf", OriginalPath: "/path/to/document.pdf", DeletionDate: time.Now(), Size: 200, IsDir: false},
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: makeTime(14), Size: 100, IsDir: false},
+		{Name: "document.pdf", OriginalPath: "/path/to/document.pdf", DeletionDate: makeTime(15), Size: 200, IsDir: false},
 	}
 
 	model := NewManageModel(items, false, nil)
@@ -355,7 +359,7 @@ func TestMax(t *testing.T) {
 
 func TestManageModelView(t *testing.T) {
 	items := []trash.TrashItem{
-		{Name: "file.txt", OriginalPath: "/path/to/file.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+		{Name: "file.txt", OriginalPath: "/path/to/file.txt", DeletionDate: makeTime(16), Size: 100, IsDir: false},
 	}
 
 	t.Run("shows items", func(t *testing.T) {
@@ -378,7 +382,7 @@ func TestManageModelView(t *testing.T) {
 
 	t.Run("shows directory indicator", func(t *testing.T) {
 		dirItems := []trash.TrashItem{
-			{Name: "mydir", OriginalPath: "/path/to/mydir", DeletionDate: time.Now(), Size: 0, IsDir: true},
+			{Name: "mydir", OriginalPath: "/path/to/mydir", DeletionDate: makeTime(17), Size: 0, IsDir: true},
 		}
 		model := NewManageModel(dirItems, false, nil)
 		view := model.View()
@@ -389,9 +393,9 @@ func TestManageModelView(t *testing.T) {
 
 func TestManageModelUpdate(t *testing.T) {
 	items := []trash.TrashItem{
-		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
-		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: time.Now(), Size: 200, IsDir: false},
-		{Name: "file3.txt", OriginalPath: "/path/to/file3.txt", DeletionDate: time.Now(), Size: 300, IsDir: false},
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: makeTime(3), Size: 100, IsDir: false},
+		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: makeTime(2), Size: 200, IsDir: false},
+		{Name: "file3.txt", OriginalPath: "/path/to/file3.txt", DeletionDate: makeTime(1), Size: 300, IsDir: false},
 	}
 
 	t.Run("/ enters search mode", func(t *testing.T) {
@@ -708,8 +712,8 @@ func TestManageModelUpdate(t *testing.T) {
 
 func TestUpdateConfirmMode(t *testing.T) {
 	items := []trash.TrashItem{
-		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
-		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: time.Now(), Size: 200, IsDir: false},
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: makeTime(21), Size: 100, IsDir: false},
+		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: makeTime(22), Size: 200, IsDir: false},
 	}
 
 	t.Run("Escape cancels confirmation", func(t *testing.T) {
@@ -799,7 +803,7 @@ func TestUpdateConfirmMode(t *testing.T) {
 
 func TestUpdateResultsMode(t *testing.T) {
 	items := []trash.TrashItem{
-		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: makeTime(23), Size: 100, IsDir: false},
 	}
 
 	t.Run("Enter exits", func(t *testing.T) {
@@ -875,8 +879,8 @@ func TestUpdateResultsMode(t *testing.T) {
 
 func TestExecuteAction(t *testing.T) {
 	items := []trash.TrashItem{
-		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
-		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: time.Now(), Size: 200, IsDir: true},
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: makeTime(24), Size: 100, IsDir: false},
+		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: makeTime(25), Size: 200, IsDir: true},
 	}
 
 	t.Run("execute with nil manager", func(t *testing.T) {
@@ -987,8 +991,8 @@ func TestExecuteActionWithManager(t *testing.T) {
 
 func TestViewConfirm(t *testing.T) {
 	items := []trash.TrashItem{
-		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
-		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: time.Now(), Size: 200, IsDir: true},
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: makeTime(26), Size: 100, IsDir: false},
+		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: makeTime(27), Size: 200, IsDir: true},
 	}
 
 	t.Run("restore confirmation", func(t *testing.T) {
@@ -1038,7 +1042,7 @@ func TestViewConfirm(t *testing.T) {
 			manyItems[i] = trash.TrashItem{
 				Name:         fmt.Sprintf("file%d.txt", i),
 				OriginalPath: fmt.Sprintf("/path/to/file%d.txt", i),
-				DeletionDate: time.Now(),
+				DeletionDate: makeTime(28),
 				Size:         100,
 				IsDir:        false,
 			}
@@ -1071,8 +1075,8 @@ func TestViewConfirm(t *testing.T) {
 
 func TestViewResults(t *testing.T) {
 	items := []trash.TrashItem{
-		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
-		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: time.Now(), Size: 200, IsDir: true},
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: makeTime(29), Size: 100, IsDir: false},
+		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: makeTime(30), Size: 200, IsDir: true},
 	}
 
 	t.Run("successful restore results", func(t *testing.T) {
@@ -1149,7 +1153,7 @@ func TestViewResults(t *testing.T) {
 		emptyPathItem := trash.TrashItem{
 			Name:         "noname.txt",
 			OriginalPath: "",
-			DeletionDate: time.Now(),
+			DeletionDate: makeTime(31),
 			Size:         100,
 			IsDir:        false,
 		}
@@ -1182,7 +1186,7 @@ func TestViewResults(t *testing.T) {
 
 func TestResults(t *testing.T) {
 	items := []trash.TrashItem{
-		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: makeTime(32), Size: 100, IsDir: false},
 	}
 
 	t.Run("returns results", func(t *testing.T) {
@@ -1207,7 +1211,7 @@ func TestResults(t *testing.T) {
 
 func TestAction(t *testing.T) {
 	items := []trash.TrashItem{
-		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: makeTime(33), Size: 100, IsDir: false},
 	}
 
 	t.Run("returns restore action", func(t *testing.T) {
@@ -1233,7 +1237,7 @@ func TestAction(t *testing.T) {
 
 func TestManageModelUpdateConfirmWithR(t *testing.T) {
 	items := []trash.TrashItem{
-		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: makeTime(34), Size: 100, IsDir: false},
 	}
 
 	model := NewManageModel(items, false, nil)
@@ -1247,7 +1251,7 @@ func TestManageModelUpdateConfirmWithR(t *testing.T) {
 
 func TestManageModelUpdateResultsNonKeyMsg(t *testing.T) {
 	items := []trash.TrashItem{
-		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: time.Now(), Size: 100, IsDir: false},
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: makeTime(35), Size: 100, IsDir: false},
 	}
 
 	model := NewManageModel(items, false, nil)
@@ -1257,4 +1261,272 @@ func TestManageModelUpdateResultsNonKeyMsg(t *testing.T) {
 	m := updatedModel.(ManageModel)
 	assert.False(t, m.confirmed)
 	assert.Nil(t, cmd)
+}
+
+func TestSortItems(t *testing.T) {
+	items := []trash.TrashItem{
+		{Name: "b.txt", OriginalPath: "/path/b.txt", DeletionDate: makeTime(1), Size: 200, IsDir: false, FileCount: 0},
+		{Name: "a.txt", OriginalPath: "/path/a.txt", DeletionDate: makeTime(3), Size: 100, IsDir: false, FileCount: 0},
+		{Name: "c.txt", OriginalPath: "/path/c.txt", DeletionDate: makeTime(2), Size: 300, IsDir: false, FileCount: 0},
+	}
+
+	t.Run("sort by deletion date descending", func(t *testing.T) {
+		sorted := sortItems(items, sortByDeletionDate, false)
+		require.Len(t, sorted, 3)
+		assert.Equal(t, "a.txt", sorted[0].Name) // makeTime(3) newest
+		assert.Equal(t, "c.txt", sorted[1].Name) // makeTime(2)
+		assert.Equal(t, "b.txt", sorted[2].Name) // makeTime(1) oldest
+	})
+
+	t.Run("sort by deletion date ascending", func(t *testing.T) {
+		sorted := sortItems(items, sortByDeletionDate, true)
+		require.Len(t, sorted, 3)
+		assert.Equal(t, "b.txt", sorted[0].Name) // makeTime(1) oldest
+		assert.Equal(t, "c.txt", sorted[1].Name) // makeTime(2)
+		assert.Equal(t, "a.txt", sorted[2].Name) // makeTime(3) newest
+	})
+
+	t.Run("sort by name ascending", func(t *testing.T) {
+		sorted := sortItems(items, sortByName, true)
+		require.Len(t, sorted, 3)
+		assert.Equal(t, "a.txt", sorted[0].Name)
+		assert.Equal(t, "b.txt", sorted[1].Name)
+		assert.Equal(t, "c.txt", sorted[2].Name)
+	})
+
+	t.Run("sort by name descending", func(t *testing.T) {
+		sorted := sortItems(items, sortByName, false)
+		require.Len(t, sorted, 3)
+		assert.Equal(t, "c.txt", sorted[0].Name)
+		assert.Equal(t, "b.txt", sorted[1].Name)
+		assert.Equal(t, "a.txt", sorted[2].Name)
+	})
+
+	t.Run("sort by size ascending", func(t *testing.T) {
+		sorted := sortItems(items, sortBySize, true)
+		require.Len(t, sorted, 3)
+		assert.Equal(t, "a.txt", sorted[0].Name) // 100
+		assert.Equal(t, "b.txt", sorted[1].Name) // 200
+		assert.Equal(t, "c.txt", sorted[2].Name) // 300
+	})
+
+	t.Run("sort by size descending", func(t *testing.T) {
+		sorted := sortItems(items, sortBySize, false)
+		require.Len(t, sorted, 3)
+		assert.Equal(t, "c.txt", sorted[0].Name) // 300
+		assert.Equal(t, "b.txt", sorted[1].Name) // 200
+		assert.Equal(t, "a.txt", sorted[2].Name) // 100
+	})
+
+	t.Run("sort by file count ascending", func(t *testing.T) {
+		dirItems := []trash.TrashItem{
+			{Name: "big", IsDir: true, FileCount: 100, DeletionDate: makeTime(1)},
+			{Name: "small", IsDir: true, FileCount: 5, DeletionDate: makeTime(2)},
+			{Name: "medium", IsDir: true, FileCount: 50, DeletionDate: makeTime(3)},
+			{Name: "file", IsDir: false, FileCount: 0, DeletionDate: makeTime(4)},
+		}
+		sorted := sortItems(dirItems, sortByFileCount, true)
+		require.Len(t, sorted, 4)
+		assert.Equal(t, "file", sorted[0].Name)   // 0
+		assert.Equal(t, "small", sorted[1].Name)  // 5
+		assert.Equal(t, "medium", sorted[2].Name) // 50
+		assert.Equal(t, "big", sorted[3].Name)    // 100
+	})
+
+	t.Run("sort by file count descending", func(t *testing.T) {
+		dirItems := []trash.TrashItem{
+			{Name: "big", IsDir: true, FileCount: 100, DeletionDate: makeTime(1)},
+			{Name: "small", IsDir: true, FileCount: 5, DeletionDate: makeTime(2)},
+			{Name: "file", IsDir: false, FileCount: 0, DeletionDate: makeTime(3)},
+		}
+		sorted := sortItems(dirItems, sortByFileCount, false)
+		require.Len(t, sorted, 3)
+		assert.Equal(t, "big", sorted[0].Name)   // 100
+		assert.Equal(t, "small", sorted[1].Name) // 5
+		assert.Equal(t, "file", sorted[2].Name)  // 0
+	})
+
+	t.Run("sort does not modify original", func(t *testing.T) {
+		original := make([]trash.TrashItem, len(items))
+		copy(original, items)
+		sortItems(items, sortByName, true)
+		for i := range items {
+			assert.Equal(t, original[i].Name, items[i].Name)
+		}
+	})
+}
+
+func TestSortLabel(t *testing.T) {
+	items := []trash.TrashItem{
+		{Name: "file.txt", OriginalPath: "/path/file.txt", DeletionDate: makeTime(1), Size: 100, IsDir: false},
+	}
+
+	t.Run("default sort label", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		label := model.sortLabel()
+		assert.Contains(t, label, "Date")
+		assert.Contains(t, label, "↓") // descending
+	})
+
+	t.Run("name sort ascending", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.sortMode = sortByName
+		model.sortAsc = true
+		label := model.sortLabel()
+		assert.Contains(t, label, "Name")
+		assert.Contains(t, label, "↑")
+	})
+
+	t.Run("size sort descending", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.sortMode = sortBySize
+		model.sortAsc = false
+		label := model.sortLabel()
+		assert.Contains(t, label, "Size")
+		assert.Contains(t, label, "↓")
+	})
+
+	t.Run("file count sort ascending", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.sortMode = sortByFileCount
+		model.sortAsc = true
+		label := model.sortLabel()
+		assert.Contains(t, label, "Count")
+		assert.Contains(t, label, "↑")
+	})
+}
+
+func TestCycleSortMode(t *testing.T) {
+	items := []trash.TrashItem{
+		{Name: "file.txt", OriginalPath: "/path/file.txt", DeletionDate: makeTime(1), Size: 100, IsDir: false},
+	}
+
+	t.Run("cycles through all sort modes", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		assert.Equal(t, sortByDeletionDate, model.sortMode)
+		assert.False(t, model.sortAsc) // desc
+
+		model.cycleSortMode()
+		assert.Equal(t, sortByName, model.sortMode)
+		assert.True(t, model.sortAsc) // asc
+
+		model.cycleSortMode()
+		assert.Equal(t, sortBySize, model.sortMode)
+		assert.False(t, model.sortAsc) // desc
+
+		model.cycleSortMode()
+		assert.Equal(t, sortByFileCount, model.sortMode)
+		assert.False(t, model.sortAsc) // desc
+
+		model.cycleSortMode()
+		assert.Equal(t, sortByDeletionDate, model.sortMode)
+		assert.False(t, model.sortAsc) // desc, wraps around
+	})
+
+	t.Run("resets selection to 0", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.selected = 5
+		model.cycleSortMode()
+		assert.Equal(t, 0, model.selected)
+	})
+}
+
+func TestToggleSortDirection(t *testing.T) {
+	items := []trash.TrashItem{
+		{Name: "file.txt", OriginalPath: "/path/file.txt", DeletionDate: makeTime(1), Size: 100, IsDir: false},
+	}
+
+	t.Run("toggles direction", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		assert.False(t, model.sortAsc)
+
+		model.toggleSortDirection()
+		assert.True(t, model.sortAsc)
+
+		model.toggleSortDirection()
+		assert.False(t, model.sortAsc)
+	})
+
+	t.Run("resets selection to 0", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		model.selected = 5
+		model.toggleSortDirection()
+		assert.Equal(t, 0, model.selected)
+	})
+}
+
+func TestSortKeyBindings(t *testing.T) {
+	items := []trash.TrashItem{
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: makeTime(3), Size: 100, IsDir: false},
+		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: makeTime(2), Size: 200, IsDir: false},
+		{Name: "file3.txt", OriginalPath: "/path/to/file3.txt", DeletionDate: makeTime(1), Size: 300, IsDir: false},
+	}
+
+	t.Run("s key cycles sort mode in select mode", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		assert.Equal(t, sortByDeletionDate, model.sortMode)
+
+		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+		m := updatedModel.(ManageModel)
+		assert.Equal(t, sortByName, m.sortMode)
+		assert.Equal(t, 0, m.selected)
+	})
+
+	t.Run("S key toggles sort direction in select mode", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		assert.False(t, model.sortAsc)
+
+		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'S'}})
+		m := updatedModel.(ManageModel)
+		assert.True(t, m.sortAsc)
+	})
+
+	t.Run("sort persists across filter", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+
+		// Switch to sort by name
+		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+		model = updatedModel.(ManageModel)
+
+		// Enter search and filter
+		updatedModel, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+		model = updatedModel.(ManageModel)
+		model.search.SetValue("file")
+		model.filterItems()
+
+		assert.Equal(t, sortByName, model.sortMode)
+	})
+}
+
+func TestSortInView(t *testing.T) {
+	items := []trash.TrashItem{
+		{Name: "file.txt", OriginalPath: "/path/file.txt", DeletionDate: makeTime(1), Size: 100, IsDir: false},
+	}
+
+	t.Run("view contains sort indicator", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		view := model.View()
+		assert.Contains(t, view, "Sort: Date ↓")
+	})
+
+	t.Run("view contains sort keybinding hint", func(t *testing.T) {
+		model := NewManageModel(items, false, nil)
+		view := model.View()
+		assert.Contains(t, view, "s/S sort")
+	})
+}
+
+func TestDefaultSortIsDeletionDateDesc(t *testing.T) {
+	items := []trash.TrashItem{
+		{Name: "old.txt", OriginalPath: "/path/old.txt", DeletionDate: makeTime(1), Size: 100, IsDir: false},
+		{Name: "new.txt", OriginalPath: "/path/new.txt", DeletionDate: makeTime(5), Size: 100, IsDir: false},
+		{Name: "mid.txt", OriginalPath: "/path/mid.txt", DeletionDate: makeTime(3), Size: 100, IsDir: false},
+	}
+
+	model := NewManageModel(items, false, nil)
+
+	require.Len(t, model.items, 3)
+	assert.Equal(t, "new.txt", model.items[0].Name) // newest first
+	assert.Equal(t, "mid.txt", model.items[1].Name)
+	assert.Equal(t, "old.txt", model.items[2].Name) // oldest last
 }
