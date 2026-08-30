@@ -359,7 +359,7 @@ func TestMax(t *testing.T) {
 
 func TestManageModelView(t *testing.T) {
 	items := []trash.TrashItem{
-		{Name: "file.txt", OriginalPath: "/path/to/file.txt", DeletionDate: makeTime(16), Size: 100, IsDir: false},
+		{Name: "file.txt", OriginalPath: "/path/to/file.txt", DeletionDate: makeTime(16), Size: 100, IsDir: false, TrashDir: "/mnt/usb/.Trash-1000"},
 	}
 
 	t.Run("shows items", func(t *testing.T) {
@@ -369,6 +369,8 @@ func TestManageModelView(t *testing.T) {
 		assert.Contains(t, view, "Manage Trash")
 		assert.Contains(t, view, "file.txt")
 		assert.Contains(t, view, "/path/to/file.txt")
+		assert.Contains(t, view, "Volume:")
+		assert.Contains(t, view, "/mnt/usb")
 	})
 
 	t.Run("shows no matching files", func(t *testing.T) {

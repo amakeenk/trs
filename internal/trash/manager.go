@@ -23,6 +23,11 @@ type TrashItem struct {
 	FileCount    int         // Number of files (for directories, includes nested files)
 }
 
+// VolumeName returns a user-facing name for the volume containing the item.
+func (t TrashItem) VolumeName() string {
+	return TrashVolumeName(t.TrashDir)
+}
+
 // TypeString returns a human-readable string of the item type
 func (t TrashItem) TypeString() string {
 	if t.Mode&os.ModeSymlink != 0 {

@@ -183,6 +183,7 @@ func TestListItem(t *testing.T) {
 		Deleted:   "2024-01-01 12:00",
 		IsDir:     false,
 		Original:  "/path/to/test.txt",
+		Volume:    "Home",
 	}
 
 	assert.Equal(t, 1, item.Index)
@@ -190,6 +191,7 @@ func TestListItem(t *testing.T) {
 	assert.Equal(t, "100 B", item.Size)
 	assert.Equal(t, int64(100), item.SizeBytes)
 	assert.False(t, item.IsDir)
+	assert.Equal(t, "Home", item.Volume)
 }
 
 func TestManageResult(t *testing.T) {
@@ -460,6 +462,8 @@ func TestOutputTable(t *testing.T) {
 	output := buf.String()
 
 	assert.Contains(t, output, "table_test.txt")
+	assert.Contains(t, output, "VOLUME")
+	assert.Contains(t, output, "Home")
 }
 
 // TestOutputJSON tests the outputJSON function
@@ -496,6 +500,7 @@ func TestOutputJSON(t *testing.T) {
 	assert.Contains(t, output, "json_test.txt")
 	assert.Contains(t, output, "index")
 	assert.Contains(t, output, "size_bytes")
+	assert.Contains(t, output, `"volume": "Home"`)
 }
 
 // TestOutputJSONStatus tests the outputJSONStatus function

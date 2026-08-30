@@ -45,9 +45,9 @@ trs list --json           # Вывод в формате JSON
 
 Вывод:
 ```
-#  NAME              SIZE    DELETED              ORIGINAL PATH
-1  config.json       1.2KB   2026-03-05 10:30    /home/user/project/config.json
-2  old_backup/       45MB    2026-03-04 18:22    /home/user/backups/old_backup
+#  NAME              ORIGINAL PATH                          VOLUME      SIZE    DELETED
+1  config.json       /home/user/project/config.json         Home        1.2KB   2026-03-05 10:30
+2  old_backup/       /mnt/backup/old_backup                 /mnt/backup 45MB    2026-03-04 18:22
 ```
 
 ### Управление файлами в корзине
@@ -66,6 +66,7 @@ trs manage --json       # Вывод в формате JSON
 - Выделить всё клавишами `a` или `Ctrl+a`, снять выделение через `A`
 - Нечёткий поиск по именам и оригинальным путям
 - Нажмите `r` для восстановления или `d` для безвозвратного удаления выбранных файлов
+- В сведениях показывается том, содержащий каждый объект корзины
 - Результаты показывают полные оригинальные пути
 
 ### Очистка корзины

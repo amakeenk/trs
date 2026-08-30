@@ -5,11 +5,12 @@ import (
 	"sort"
 	"strings"
 
-	"altlinux.space/amakeenk/trs/internal/trash"
-	"altlinux.space/amakeenk/trs/internal/ui"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"altlinux.space/amakeenk/trs/internal/trash"
+	"altlinux.space/amakeenk/trs/internal/ui"
 )
 
 type mode int
@@ -690,6 +691,8 @@ func (m ManageModel) viewSelect() string {
 		b.WriteString(previewStyle.Render(fmt.Sprintf("Size:     %s", ui.FormatSize(item.Size))))
 		b.WriteString("\n")
 		b.WriteString(previewStyle.Render(fmt.Sprintf("Type:     %s", item.TypeString())))
+		b.WriteString("\n")
+		b.WriteString(previewStyle.Render(fmt.Sprintf("Volume:   %s", item.VolumeName())))
 	}
 
 	// Add trash statistics

@@ -36,6 +36,37 @@ func TestHomeTrashDir(t *testing.T) {
 	})
 }
 
+func TestTrashVolumeName(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", "/home/user/.local/share")
+
+	tests := []struct {
+		name     string
+		trashDir string
+		expected string
+	}{
+		{name: "empty", trashDir: "", expected: "Unknown"},
+		{name: "home trash", trashDir: "/home/user/.local/share/Trash", expected: "Home"},
+		{name: "private volume trash", trashDir: "/mnt/usb/.Trash-1000", expected: "/mnt/usb"},
+		{name: "shared volume trash", trashDir: "/media/disk/.Trash/1000", expected: "/media/disk"},
+		{name: "root volume trash", trashDir: "/.Trash-1000", expected: "/"},
+		{name: "unknown layout", trashDir: "/custom/trash", expected: "/custom/trash"},
+		{name: "invalid private suffix", trashDir: "/mnt/usb/.Trash-user", expected: "/mnt/usb/.Trash-user"},
+		{name: "invalid shared suffix", trashDir: "/mnt/usb/.Trash/user", expected: "/mnt/usb/.Trash/user"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, TrashVolumeName(tt.trashDir))
+		})
+	}
+}
+
+func TestTrashItemVolumeName(t *testing.T) {
+	item := TrashItem{TrashDir: "/mnt/usb/.Trash-1000"}
+
+	assert.Equal(t, "/mnt/usb", item.VolumeName())
+}
+
 // TestGetMountPointWithNonExistentPath tests getMountPoint with deeply nested non-existent path
 func TestGetMountPointWithNonExistentPath(t *testing.T) {
 	// This should walk up to find an existing parent

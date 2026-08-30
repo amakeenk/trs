@@ -6,9 +6,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"altlinux.space/amakeenk/trs/internal/trash"
 	"altlinux.space/amakeenk/trs/internal/ui"
-	"github.com/spf13/cobra"
 )
 
 // NewListCmd creates the list command
@@ -16,7 +17,7 @@ func NewListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "List files in trash",
-		Long:  "List all files in the trash with their index, name, size, and deletion date",
+		Long:  "List all files in the trash with their index, name, original path, volume, size, and deletion date",
 		Run:   runList,
 	}
 }
@@ -30,6 +31,7 @@ type ListItem struct {
 	Deleted   string `json:"deleted"`
 	IsDir     bool   `json:"is_dir"`
 	Original  string `json:"original_path"`
+	Volume    string `json:"volume"`
 }
 
 func runList(cmd *cobra.Command, args []string) {
@@ -70,6 +72,7 @@ func outputJSON(items []trash.TrashItem) {
 			Deleted:   item.DeletionDate.Format("2006-01-02 15:04"),
 			IsDir:     item.IsDir,
 			Original:  item.OriginalPath,
+			Volume:    item.VolumeName(),
 		}
 	}
 	output, _ := json.MarshalIndent(result, "", "  ")
@@ -80,6 +83,7 @@ const (
 	colIndexWidth    = 5
 	colNameWidth     = 60
 	colOriginalWidth = 70
+	colVolumeWidth   = 20
 	colSizeWidth     = 10
 	colDeletedWidth  = 17
 )
@@ -105,18 +109,20 @@ func formatColumn(s string, width int) string {
 }
 
 func outputTable(items []trash.TrashItem) {
-	header := fmt.Sprintf("%s  %s  %s  %s  %s",
+	header := fmt.Sprintf("%s  %s  %s  %s  %s  %s",
 		ui.BoldText(formatColumn("#", colIndexWidth)),
 		ui.BoldText(formatColumn("NAME", colNameWidth)),
 		ui.BoldText(formatColumn("ORIGINAL", colOriginalWidth)),
+		ui.BoldText(formatColumn("VOLUME", colVolumeWidth)),
 		ui.BoldText(formatColumn("SIZE", colSizeWidth)),
 		ui.BoldText(formatColumn("DELETED", colDeletedWidth)),
 	)
 	fmt.Println(header)
-	fmt.Printf("%s  %s  %s  %s  %s\n",
+	fmt.Printf("%s  %s  %s  %s  %s  %s\n",
 		strings.Repeat("─", colIndexWidth),
 		strings.Repeat("─", colNameWidth),
 		strings.Repeat("─", colOriginalWidth),
+		strings.Repeat("─", colVolumeWidth),
 		strings.Repeat("─", colSizeWidth),
 		strings.Repeat("─", colDeletedWidth),
 	)
@@ -138,11 +144,14 @@ func outputTable(items []trash.TrashItem) {
 
 		orig := ui.Truncate(origPath, colOriginalWidth-1)
 		orig = formatColumn(orig, colOriginalWidth)
+		volume := ui.Truncate(item.VolumeName(), colVolumeWidth-1)
+		volume = formatColumn(volume, colVolumeWidth)
 
-		row := fmt.Sprintf("%s  %s  %s  %s  %s",
+		row := fmt.Sprintf("%s  %s  %s  %s  %s  %s",
 			formatColumn(fmt.Sprintf("%d", i+1), colIndexWidth),
 			name,
 			orig,
+			volume,
 			formatColumn(ui.FormatSize(item.Size), colSizeWidth),
 			formatColumn(item.DeletionDate.Format("2006-01-02 15:04"), colDeletedWidth),
 		)

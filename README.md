@@ -45,9 +45,9 @@ trs list --json           # JSON output
 
 Output:
 ```
-#  NAME              SIZE    DELETED              ORIGINAL PATH
-1  config.json       1.2KB   2026-03-05 10:30    /home/user/project/config.json
-2  old_backup/       45MB    2026-03-04 18:22    /home/user/backups/old_backup
+#  NAME              ORIGINAL PATH                          VOLUME      SIZE    DELETED
+1  config.json       /home/user/project/config.json         Home        1.2KB   2026-03-05 10:30
+2  old_backup/       /mnt/backup/old_backup                 /mnt/backup 45MB    2026-03-04 18:22
 ```
 
 ### Manage trash files
@@ -66,6 +66,7 @@ TUI features:
 - Select all with `a` or `Ctrl+a`, deselect all with `A`
 - Fuzzy search across names and original paths
 - Press `r` to restore or `d` to permanently delete selected files
+- Details show the volume containing each trashed item
 - Results show full original paths
 
 ### Empty trash

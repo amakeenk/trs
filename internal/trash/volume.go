@@ -34,6 +34,37 @@ func HomeTrashDir() (string, error) {
 	return filepath.Join(home, ".local", "share", "Trash"), nil
 }
 
+// TrashVolumeName returns a user-facing name for a trash directory's volume.
+func TrashVolumeName(trashDir string) string {
+	if trashDir == "" {
+		return "Unknown"
+	}
+
+	cleanTrashDir := filepath.Clean(trashDir)
+	homeTrash, err := HomeTrashDir()
+	if err == nil && cleanTrashDir == filepath.Clean(homeTrash) {
+		return "Home"
+	}
+
+	base := filepath.Base(cleanTrashDir)
+	if strings.HasPrefix(base, ".Trash-") {
+		uid, err := strconv.Atoi(strings.TrimPrefix(base, ".Trash-"))
+		if err == nil && uid >= 0 {
+			return filepath.Dir(cleanTrashDir)
+		}
+	}
+
+	parent := filepath.Dir(cleanTrashDir)
+	if filepath.Base(parent) == ".Trash" {
+		uid, err := strconv.Atoi(base)
+		if err == nil && uid >= 0 {
+			return filepath.Dir(parent)
+		}
+	}
+
+	return cleanTrashDir
+}
+
 // VolumeTrashDir returns the trash directory for a given path's volume
 // For cross-device files, use $VOLUME/.Trash-$UID/
 func VolumeTrashDir(path string) (string, error) {
