@@ -821,6 +821,8 @@ func TestIsCrossDeviceError(t *testing.T) {
 	// Test with actual cross-device error
 	linkErr := &os.LinkError{Err: syscall.EXDEV}
 	assert.True(t, isCrossDeviceError(linkErr))
+	assert.True(t, isCrossDeviceError(syscall.EXDEV))
+	assert.True(t, isCrossDeviceError(fmt.Errorf("rename: %w", syscall.EXDEV)))
 }
 
 // TestIsNotFoundError tests isNotFoundError function

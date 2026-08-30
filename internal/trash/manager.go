@@ -1,6 +1,7 @@
 package trash
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -998,13 +999,5 @@ func safeRemoveAll(path string) error {
 
 // isCrossDeviceError checks if the error is a cross-device link error
 func isCrossDeviceError(err error) bool {
-	if err == nil {
-		return false
-	}
-	// Use syscall.EXDEV for portable cross-device detection
-	if linkErr, ok := err.(*os.LinkError); ok {
-		return linkErr.Err == syscall.EXDEV
-	}
-	// Fallback for non-LinkError cases (shouldn't happen with os.Rename)
-	return false
+	return errors.Is(err, syscall.EXDEV)
 }
