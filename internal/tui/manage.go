@@ -18,6 +18,7 @@ const (
 	modeSelect mode = iota
 	modeSearch
 	modeConfirm
+	modeProgress
 	modeResults
 )
 
@@ -60,6 +61,7 @@ type ManageModel struct {
 	force         bool
 	manager       *trash.Manager
 	results       []ActionResult
+	pendingItems  []trash.TrashItem // Items waiting to be processed
 	sortMode      sortMode
 	sortAsc       bool
 	sorted        bool
@@ -107,6 +109,9 @@ var (
 	errorStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("196"))
 
+	progressEmptyStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("241"))
+
 	confirmBoxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("214")).
@@ -147,6 +152,10 @@ func (m ManageModel) Init() tea.Cmd {
 }
 
 func (m ManageModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if result, ok := msg.(actionFinishedMsg); ok {
+		return m.updateProgress(result)
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch m.mode {
@@ -315,23 +324,78 @@ func (m ManageModel) updateConfirmMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyEnter:
-		// Execute the action
-		m.executeAction()
-		m.mode = modeResults
-		return m, nil
+		return m.startAction()
 	}
 
 	switch msg.String() {
 	case "y", "Y":
-		m.executeAction()
-		m.mode = modeResults
-		return m, nil
+		return m.startAction()
 	case "n", "N":
 		m.mode = modeSelect
 		return m, nil
 	}
 
 	return m, nil
+}
+
+type actionFinishedMsg struct {
+	result ActionResult // Result of the completed item
+}
+
+func (m ManageModel) startAction() (tea.Model, tea.Cmd) {
+	m.pendingItems = m.SelectedItems()
+	m.results = make([]ActionResult, 0, len(m.pendingItems))
+	m.mode = modeProgress
+
+	if len(m.pendingItems) == 0 {
+		m.mode = modeResults
+		return m, nil
+	}
+
+	return m, m.executeItem(m.pendingItems[0])
+}
+
+func (m ManageModel) updateProgress(msg actionFinishedMsg) (tea.Model, tea.Cmd) {
+	if m.mode != modeProgress {
+		return m, nil
+	}
+
+	m.results = append(m.results, msg.result)
+	if len(m.results) == len(m.pendingItems) {
+		m.mode = modeResults
+		return m, nil
+	}
+
+	return m, m.executeItem(m.pendingItems[len(m.results)])
+}
+
+func (m ManageModel) executeItem(item trash.TrashItem) tea.Cmd {
+	return func() tea.Msg {
+		return actionFinishedMsg{result: m.performAction(item)}
+	}
+}
+
+func (m ManageModel) performAction(item trash.TrashItem) ActionResult {
+	result := ActionResult{
+		Item:    item,
+		Action:  m.action,
+		Success: false,
+	}
+
+	if m.manager == nil {
+		return result
+	}
+
+	var err error
+	if m.action == ActionRestore {
+		err = m.manager.Restore(item.Name, m.force)
+	} else {
+		err = m.manager.Delete(item.Name)
+	}
+	result.Success = err == nil
+	result.Error = err
+
+	return result
 }
 
 func (m ManageModel) updateResultsMode(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -362,32 +426,6 @@ func (m ManageModel) selectAll() ManageModel {
 func (m ManageModel) deselectAll() ManageModel {
 	m.selectedItems = make(map[string]bool)
 	return m
-}
-
-func (m *ManageModel) executeAction() {
-	selected := m.SelectedItems()
-	m.results = make([]ActionResult, 0, len(selected))
-
-	for _, item := range selected {
-		result := ActionResult{
-			Item:    item,
-			Action:  m.action,
-			Success: false,
-		}
-
-		if m.manager != nil {
-			var err error
-			if m.action == ActionRestore {
-				err = m.manager.Restore(item.Name, m.force)
-			} else {
-				err = m.manager.Delete(item.Name)
-			}
-			result.Success = err == nil
-			result.Error = err
-		}
-
-		m.results = append(m.results, result)
-	}
 }
 
 func sortItems(items []trash.TrashItem, mode sortMode, asc bool) []trash.TrashItem {
@@ -505,11 +543,56 @@ func (m ManageModel) View() string {
 	switch m.mode {
 	case modeConfirm:
 		return m.viewConfirm()
+	case modeProgress:
+		return m.viewProgress()
 	case modeResults:
 		return m.viewResults()
 	default:
 		return m.viewSelect()
 	}
+}
+
+func (m ManageModel) viewProgress() string {
+	const barWidth = 40
+
+	total := len(m.pendingItems)
+	completed := len(m.results)
+	percent := 0
+	filled := 0
+	if total > 0 {
+		percent = completed * 100 / total
+		filled = completed * barWidth / total
+	}
+
+	actionTitle := "Restoring"
+	actionText := "Restored"
+	barStyle := successStyle
+	if m.action == ActionDelete {
+		actionTitle = "Permanently deleting"
+		actionText = "Deleted"
+		barStyle = errorStyle
+	}
+
+	var b strings.Builder
+	b.WriteString(titleStyle.Render("🗑️  " + actionTitle + "..."))
+	b.WriteString("\n\n")
+	b.WriteString(barStyle.Render(strings.Repeat("█", filled)))
+	b.WriteString(progressEmptyStyle.Render(strings.Repeat("░", barWidth-filled)))
+	b.WriteString(fmt.Sprintf("  %3d%%", percent))
+	b.WriteString("\n")
+	b.WriteString(previewStyle.Render(fmt.Sprintf("%s %d of %d item(s)", actionText, completed, total)))
+
+	if completed < total {
+		item := m.pendingItems[completed]
+		name := item.Name
+		if item.IsDir {
+			name += "/"
+		}
+		b.WriteString("\n\n")
+		b.WriteString(previewStyle.Render("Processing: " + name))
+	}
+
+	return b.String()
 }
 
 func (m ManageModel) viewSelect() string {

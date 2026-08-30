@@ -742,10 +742,17 @@ func TestUpdateConfirmMode(t *testing.T) {
 		model.action = ActionRestore
 		model.selectedItems[itemKey(items[0])] = true
 
-		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+		updatedModel, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 		m := updatedModel.(ManageModel)
+		assert.Equal(t, modeProgress, m.mode)
+		assert.Empty(t, m.results)
+		require.NotNil(t, cmd)
+
+		updatedModel, cmd = m.Update(cmd())
+		m = updatedModel.(ManageModel)
 		assert.Equal(t, modeResults, m.mode)
 		assert.Len(t, m.results, 1)
+		assert.Nil(t, cmd)
 	})
 
 	t.Run("y confirms action", func(t *testing.T) {
@@ -754,9 +761,10 @@ func TestUpdateConfirmMode(t *testing.T) {
 		model.action = ActionRestore
 		model.selectedItems[itemKey(items[0])] = true
 
-		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+		updatedModel, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
 		m := updatedModel.(ManageModel)
-		assert.Equal(t, modeResults, m.mode)
+		assert.Equal(t, modeProgress, m.mode)
+		assert.NotNil(t, cmd)
 	})
 
 	t.Run("Y confirms action", func(t *testing.T) {
@@ -765,9 +773,10 @@ func TestUpdateConfirmMode(t *testing.T) {
 		model.action = ActionRestore
 		model.selectedItems[itemKey(items[0])] = true
 
-		updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'Y'}})
+		updatedModel, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'Y'}})
 		m := updatedModel.(ManageModel)
-		assert.Equal(t, modeResults, m.mode)
+		assert.Equal(t, modeProgress, m.mode)
+		assert.NotNil(t, cmd)
 	})
 
 	t.Run("n cancels action", func(t *testing.T) {
@@ -877,7 +886,54 @@ func TestUpdateResultsMode(t *testing.T) {
 	})
 }
 
-func TestExecuteAction(t *testing.T) {
+func TestUpdateProgressMode(t *testing.T) {
+	items := []trash.TrashItem{
+		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: makeTime(23), Size: 100, IsDir: false},
+		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: makeTime(24), Size: 200, IsDir: false},
+	}
+
+	model := NewManageModel(items, false, nil)
+	model.mode = modeConfirm
+	model.action = ActionDelete
+	model.selectedItems[itemKey(items[0])] = true
+	model.selectedItems[itemKey(items[1])] = true
+
+	updatedModel, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m := updatedModel.(ManageModel)
+	require.Equal(t, modeProgress, m.mode)
+	require.NotNil(t, cmd)
+	assert.Contains(t, m.View(), "Permanently deleting")
+	assert.Contains(t, m.View(), "0 of 2 item(s)")
+	assert.Contains(t, m.View(), "Processing: "+m.pendingItems[0].Name)
+
+	updatedModel, cmd = m.Update(cmd())
+	m = updatedModel.(ManageModel)
+	require.Equal(t, modeProgress, m.mode)
+	require.NotNil(t, cmd)
+	assert.Len(t, m.results, 1)
+	assert.Contains(t, m.View(), "50%")
+	assert.Contains(t, m.View(), "Processing: "+m.pendingItems[1].Name)
+
+	updatedModel, cmd = m.Update(cmd())
+	m = updatedModel.(ManageModel)
+	assert.Equal(t, modeResults, m.mode)
+	assert.Len(t, m.results, 2)
+	assert.Nil(t, cmd)
+}
+
+func TestProgressIgnoresUnexpectedResult(t *testing.T) {
+	model := NewManageModel(nil, false, nil)
+	model.mode = modeSelect
+	msg := actionFinishedMsg{result: ActionResult{}}
+
+	updatedModel, cmd := model.Update(msg)
+	m := updatedModel.(ManageModel)
+	assert.Equal(t, modeSelect, m.mode)
+	assert.Empty(t, m.results)
+	assert.Nil(t, cmd)
+}
+
+func TestPerformAction(t *testing.T) {
 	items := []trash.TrashItem{
 		{Name: "file1.txt", OriginalPath: "/path/to/file1.txt", DeletionDate: makeTime(24), Size: 100, IsDir: false},
 		{Name: "file2.txt", OriginalPath: "/path/to/file2.txt", DeletionDate: makeTime(25), Size: 200, IsDir: true},
@@ -885,60 +941,34 @@ func TestExecuteAction(t *testing.T) {
 
 	t.Run("execute with nil manager", func(t *testing.T) {
 		model := NewManageModel(items, false, nil)
-		model.selectedItems[itemKey(items[0])] = true
 		model.action = ActionRestore
 
-		model.executeAction()
+		result := model.performAction(items[0])
 
-		require.Len(t, model.results, 1)
-		assert.False(t, model.results[0].Success)
-		assert.Equal(t, items[0], model.results[0].Item)
+		assert.False(t, result.Success)
+		assert.Equal(t, items[0], result.Item)
 	})
 
 	t.Run("execute restore action", func(t *testing.T) {
 		model := NewManageModel(items, false, nil)
-		model.selectedItems[itemKey(items[0])] = true
 		model.action = ActionRestore
 
-		model.executeAction()
+		result := model.performAction(items[0])
 
-		require.Len(t, model.results, 1)
-		assert.Equal(t, ActionRestore, model.results[0].Action)
+		assert.Equal(t, ActionRestore, result.Action)
 	})
 
 	t.Run("execute delete action", func(t *testing.T) {
 		model := NewManageModel(items, false, nil)
-		model.selectedItems[itemKey(items[0])] = true
 		model.action = ActionDelete
 
-		model.executeAction()
+		result := model.performAction(items[0])
 
-		require.Len(t, model.results, 1)
-		assert.Equal(t, ActionDelete, model.results[0].Action)
-	})
-
-	t.Run("execute multiple items", func(t *testing.T) {
-		model := NewManageModel(items, false, nil)
-		model.selectedItems[itemKey(items[0])] = true
-		model.selectedItems[itemKey(items[1])] = true
-		model.action = ActionRestore
-
-		model.executeAction()
-
-		require.Len(t, model.results, 2)
-	})
-
-	t.Run("execute with no selected items", func(t *testing.T) {
-		model := NewManageModel(items, false, nil)
-		model.action = ActionRestore
-
-		model.executeAction()
-
-		assert.Len(t, model.results, 1)
+		assert.Equal(t, ActionDelete, result.Action)
 	})
 }
 
-func TestExecuteActionWithManager(t *testing.T) {
+func TestPerformActionWithManager(t *testing.T) {
 	tmpHome := t.TempDir()
 	t.Setenv("XDG_DATA_HOME", tmpHome+"/.local/share")
 	t.Setenv("HOME", tmpHome)
@@ -958,14 +988,12 @@ func TestExecuteActionWithManager(t *testing.T) {
 
 	t.Run("restore with manager", func(t *testing.T) {
 		model := NewManageModel(items, false, mgr)
-		model.selectedItems[itemKey(items[0])] = true
 		model.action = ActionRestore
 
-		model.executeAction()
+		result := model.performAction(items[0])
 
-		require.Len(t, model.results, 1)
-		assert.True(t, model.results[0].Success)
-		assert.NoError(t, model.results[0].Error)
+		assert.True(t, result.Success)
+		assert.NoError(t, result.Error)
 	})
 
 	t.Run("delete with manager", func(t *testing.T) {
@@ -978,14 +1006,12 @@ func TestExecuteActionWithManager(t *testing.T) {
 		require.Len(t, items2, 1)
 
 		model := NewManageModel(items2, false, mgr)
-		model.selectedItems[itemKey(items2[0])] = true
 		model.action = ActionDelete
 
-		model.executeAction()
+		result := model.performAction(items2[0])
 
-		require.Len(t, model.results, 1)
-		assert.True(t, model.results[0].Success)
-		assert.NoError(t, model.results[0].Error)
+		assert.True(t, result.Success)
+		assert.NoError(t, result.Error)
 	})
 }
 
