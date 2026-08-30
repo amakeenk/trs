@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-08-30
+
+### Added
+- Add real-time sorting by deletion date, name, size, and file count in the manage TUI
+- Show an action progress bar after confirming restore or permanent deletion
+- Show the trash volume in `trs list`, JSON output, and the manage TUI
+
+### Fixed
+- Restore files across filesystems when Linux `renameat2` returns `EXDEV` directly
+
 ## [0.11.0] - 2026-04-25
 
 ### Added
@@ -186,7 +196,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - github.com/spf13/cobra - CLI framework
 - github.com/stretchr/testify - Testing assertions
 
-[Unreleased]: https://altlinux.space/amakeenk/trs/compare/v0.11.0...HEAD
+[Unreleased]: https://altlinux.space/amakeenk/trs/compare/v0.12.0...HEAD
+[0.12.0]: https://altlinux.space/amakeenk/trs/compare/v0.11.0...v0.12.0
 [0.11.0]: https://altlinux.space/amakeenk/trs/compare/v0.10.0...v0.11.0
 [0.10.0]: https://altlinux.space/amakeenk/trs/compare/v0.9.0...v0.10.0
 [0.9.0]: https://altlinux.space/amakeenk/trs/compare/v0.8.0...v0.9.0
